@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}API documentation · BharatOS{% endblock %}
+{% block content %}
+<section class="content-shell docs-page">
+  <div class="section-header compact">
+    <div><p class="eyebrow">API reference · v1</p><h1>Predictable data, visible provenance.</h1><p class="lede">The prototype demonstrates the contract future data adapters must preserve.</p></div>
+    <a class="button secondary" href="/developers">Open playground</a>
+  </div>
+
+  <div class="docs-layout">
+    <aside class="docs-nav" aria-label="On this page">
+      <strong>On this page</strong>
+      <a href="#authentication">Authentication</a>
+      <a href="#endpoints">Endpoints</a>
+      <a href="#envelope">Response envelope</a>
+      <a href="#architecture">Architecture</a>
+      <a href="/diagrams/index.html">All UML diagrams</a>
+    </aside>
+    <div class="docs-content">
+      <section id="authentication" class="doc-section">
+        <p class="eyebrow">01 · Authentication</p><h2>Send the demo key as a header</h2>
+        <pre><code>curl http://127.0.0.1:8000/api/v1/schemes \
+  -H "X-API-Key: {{ demo_key }}"</code></pre>
+        <p>The key is intentionally public and fixed for this prototype. Phase 3 replaces it with hashed, revocable developer keys.</p>
+      </section>
+
+      <section id="endpoints" class="doc-section">
+        <p class="eyebrow">02 · Endpoints</p><h2>Current API surface</h2>
+        <div class="api-table-wrap"><table class="api-table"><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody>
+          <tr><td><span class="http-method">GET</span></td><td><code>/api/v1/schemes</code></td><td>Search and filter scheme snapshots.</td></tr>
+          <tr><td><span class="http-method">GET</span></td><td><code>/api/v1/schemes/{scheme_id}</code></td><td>Retrieve one canonical record.</td></tr>
+          <tr><td><span class="http-method">GET</span></td><td><code>/api/v1/locations/pincode/{pincode}</code></td><td>Resolve one prototype PIN-code record.</td></tr>
+        </tbody></table></div>
+        <p>Scheme-list query parameters: <code>q</code>, <code>category</code>, <code>state</code>, and <code>audience</code>.</p>
+      </section>
+
+      <section id="envelope" class="doc-section">
+        <p class="eyebrow">03 · Contract</p><h2>Standard success and error envelopes</h2>
+        <div class="code-pair">
+          <div><h3>Success</h3><pre><code>{
+  "data": [...],
+  "meta": {
+    "api_version": "v1",
+    "environment": "prototype",
+    "source": "...",
+    "last_verified": "2026-09-09",
+    "generated_at": "..."
+  }
+}</code></pre></div>
+          <div><h3>Error</h3><pre><code>{
+  "error": {
+    "code": "INVALID_API_KEY",
+    "message": "...",
+    "request_id": "..."
+  }
+}</code></pre></div>
+        </div>
+      </section>
+
+      <section id="architecture" class="doc-section">
+        <p class="eyebrow">04 · Architecture</p><h2>Target component model</h2>
+        <p>Phase one implements the portal and mock API. PostgreSQL, Redis, production authentication and scheduled ingestion are shown as the intended target architecture.</p>
+        <a class="diagram-frame" href="/diagrams/component.svg" target="_blank"><img src="/diagrams/component.svg" alt="BharatOS target component UML diagram"><span>Open full-size diagram →</span></a>
+        <a class="text-link" href="/diagrams/index.html">Browse all five diagrams and explanations →</a>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}
+

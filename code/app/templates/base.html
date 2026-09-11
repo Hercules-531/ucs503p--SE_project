@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BharatOS student prototype for discovering public schemes and exploring civic-data APIs.">
+  <title>{% block title %}BharatOS{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+  <script defer src="{{ url_for('static', path='/app.js') }}"></script>
+</head>
+<body>
+  <div class="prototype-banner" role="note">
+    <span class="status-dot" aria-hidden="true"></span>
+    Student project prototype — not an official Government of India service
+  </div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="BharatOS home">
+      <span class="brand-mark" aria-hidden="true">B</span>
+      <span><strong>BharatOS</strong><small>Public data, one interface</small></span>
+    </a>
+    <button class="mobile-menu" type="button" aria-expanded="false" aria-controls="main-nav">Menu</button>
+    <nav id="main-nav" class="main-nav" aria-label="Primary navigation">
+      <a href="/" {% if active_page == 'explore' %}aria-current="page"{% endif %}>Explore schemes</a>
+      <a href="/developers" {% if active_page == 'developers' %}aria-current="page"{% endif %}>Developers</a>
+      <a href="/docs" {% if active_page == 'docs' %}aria-current="page"{% endif %}>API docs</a>
+      <a href="/admin" {% if active_page == 'admin' %}aria-current="page"{% endif %}>Admin view</a>
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer class="site-footer">
+    <p><strong>BharatOS</strong> · Software Engineering Lab prototype</p>
+    <p>Eligibility is indicative. Always verify details on the linked official source.</p>
+  </footer>
+</body>
+</html>
+

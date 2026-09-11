@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Admin overview · BharatOS{% endblock %}
+{% block content %}
+<section class="content-shell admin-page">
+  <div class="section-header">
+    <div><p class="eyebrow">Operations preview</p><h1>Know when the data can be trusted.</h1><p class="lede">A read-only mock of the monitoring surface planned for later phases.</p></div>
+    <span class="phase-badge warning">Mock operational data</span>
+  </div>
+
+  <div class="metric-grid four">
+    <article class="metric"><span>Source coverage</span><strong>2</strong><small>Prototype snapshots</small></article>
+    <article class="metric"><span>Fresh records</span><strong>11</strong><small>Checked today</small></article>
+    <article class="metric"><span>API success rate</span><strong>100%</strong><small>Local smoke test</small></article>
+    <article class="metric"><span>Open alerts</span><strong>0</strong><small>Demonstration value</small></article>
+  </div>
+
+  <div class="admin-grid">
+    <section class="work-panel">
+      <div class="panel-title"><div><p class="eyebrow">Pipeline</p><h2>Normalization stages</h2></div><span class="status-inline">Last run passed</span></div>
+      <ol class="pipeline-list">
+        <li class="done"><span>1</span><div><strong>Collect</strong><small>Read permitted snapshots</small></div></li>
+        <li class="done"><span>2</span><div><strong>Validate</strong><small>Reject malformed records</small></div></li>
+        <li class="done"><span>3</span><div><strong>Normalize</strong><small>Map to canonical fields</small></div></li>
+        <li class="done"><span>4</span><div><strong>Enrich</strong><small>Attach source and freshness</small></div></li>
+        <li class="done"><span>5</span><div><strong>Serve</strong><small>Publish through versioned API</small></div></li>
+      </ol>
+    </section>
+    <section class="work-panel">
+      <div class="panel-title"><div><p class="eyebrow">Source registry</p><h2>Dataset status</h2></div></div>
+      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Source</th><th>Records</th><th>Status</th><th>Freshness</th></tr></thead><tbody>
+      {% for row in source_rows %}<tr><td>{{ row.name }}</td><td>{{ row.records }}</td><td><span class="table-status {{ row.status|lower }}">{{ row.status }}</span></td><td>{{ row.age }}</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+  </div>
+  <div class="advisory-box admin-note"><strong>Phase boundary</strong><p>This page is intentionally read-only. Scheduled jobs, persistent logs, alerts, PostgreSQL and Redis are planned—not simulated as completed infrastructure.</p></div>
+</section>
+{% endblock %}
+

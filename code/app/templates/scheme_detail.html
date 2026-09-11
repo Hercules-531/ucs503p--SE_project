@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ scheme.short_name }} · BharatOS{% endblock %}
+{% block content %}
+<section class="content-shell detail-page">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Explore schemes</a><span aria-hidden="true">/</span><span>{{ scheme.short_name }}</span></nav>
+  <div class="detail-hero">
+    <div>
+      <div class="detail-labels"><span class="category-chip">{{ scheme.category }}</span><span>{{ scheme.states|join(', ') }}</span></div>
+      <p class="eyebrow">{{ scheme.short_name }}</p>
+      <h1>{{ scheme.name }}</h1>
+      <p class="lede">{{ scheme.summary }}</p>
+    </div>
+    <aside class="source-panel">
+      <p class="eyebrow">Source record</p>
+      <strong>{{ scheme.source.name }}</strong>
+      <dl>
+        <div><dt>Verified</dt><dd>{{ scheme.source.last_verified.strftime('%d %b %Y') }}</dd></div>
+        <div><dt>Status</dt><dd><span class="status-inline">Current snapshot</span></dd></div>
+      </dl>
+      <a class="button primary" href="{{ scheme.source.url }}" target="_blank" rel="noopener noreferrer">Open official source</a>
+    </aside>
+  </div>
+
+  <div class="detail-layout">
+    <div class="detail-main">
+      <section class="info-section">
+        <p class="eyebrow">Potential fit</p>
+        <h2>Who may find this relevant</h2>
+        <p>{{ scheme.eligibility_summary }}</p>
+        <div class="audience-row large">{% for audience in scheme.audiences %}<span>{{ audience }}</span>{% endfor %}</div>
+      </section>
+      <section class="info-section">
+        <p class="eyebrow">Benefit overview</p>
+        <h2>What the scheme supports</h2>
+        <p>{{ scheme.benefit_summary }}</p>
+      </section>
+      <div class="advisory-box" role="note">
+        <strong>This is discovery guidance, not an eligibility decision.</strong>
+        <p>Scheme rules, documents, availability and application processes can change. Confirm every detail on the linked official source before applying.</p>
+      </div>
+    </div>
+    <aside class="technical-aside">
+      <p class="eyebrow">Developer record</p>
+      <h2>Retrieve through the API</h2>
+      <code>GET /api/v1/schemes/{{ scheme.id }}</code>
+      <p>Use the phase-one key in the <code>X-API-Key</code> header.</p>
+      <a class="text-link" href="/developers?endpoint=scheme&id={{ scheme.id }}">Try this request →</a>
+      <hr>
+      <p class="meta-line"><span>Canonical ID</span><code>{{ scheme.id }}</code></p>
+      <p class="meta-line"><span>Ministry</span><strong>{{ scheme.ministry }}</strong></p>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+

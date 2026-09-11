@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Explore schemes · BharatOS{% endblock %}
+{% block content %}
+<section class="explore-shell">
+  <div class="page-intro">
+    <div>
+      <p class="eyebrow">Unified discovery</p>
+      <h1>Find public schemes without searching dozens of portals.</h1>
+      <p class="lede">Filter a source-linked prototype catalogue. Results show potential relevance, not an official eligibility decision.</p>
+    </div>
+    <div class="coverage-card" aria-label="Prototype coverage">
+      <span class="coverage-number">{{ all_schemes|length }}</span>
+      <span>verified prototype records</span>
+      <small>Snapshot checked 09 Sep 2026</small>
+    </div>
+  </div>
+
+  <form class="search-panel" method="get" action="/" aria-label="Scheme filters">
+    <label class="search-field">
+      <span>Search schemes</span>
+      <input name="q" value="{{ filters.q }}" placeholder="Try health, farmer or housing" autocomplete="off">
+    </label>
+    <label>
+      <span>Category</span>
+      <select name="category">
+        <option value="">All categories</option>
+        {% for item in categories %}<option value="{{ item }}" {% if filters.category == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>State</span>
+      <select name="state">
+        <option value="">Any state or UT</option>
+        {% for item in states %}<option value="{{ item }}" {% if filters.state == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Audience</span>
+      <select name="audience">
+        <option value="">Everyone</option>
+        {% for item in audiences %}<option value="{{ item }}" {% if filters.audience == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="button primary" type="submit">Show matches</button>
+  </form>
+
+  <div class="results-heading">
+    <div><p class="eyebrow">Catalogue</p><h2>{{ schemes|length }} potential match{% if schemes|length != 1 %}es{% endif %}</h2></div>
+    {% if filters.q or filters.category or filters.audience %}<a class="text-link" href="/">Clear filters</a>{% endif %}
+  </div>
+
+  {% if schemes %}
+  <div class="scheme-grid">
+    {% for scheme in schemes %}
+    <article class="scheme-card">
+      <div class="scheme-card-top">
+        <span class="category-chip">{{ scheme.category }}</span>
+        <span class="freshness"><span aria-hidden="true">●</span> Source checked</span>
+      </div>
+      <p class="scheme-short">{{ scheme.short_name }}</p>
+      <h3><a href="/schemes/{{ scheme.slug }}">{{ scheme.name }}</a></h3>
+      <p>{{ scheme.summary }}</p>
+      <div class="audience-row" aria-label="Relevant audiences">
+        {% for audience in scheme.audiences %}<span>{{ audience }}</span>{% endfor %}
+      </div>
+      <div class="scheme-source">
+        <span>{{ scheme.source.name }}</span>
+        <a href="/schemes/{{ scheme.slug }}">View details <span aria-hidden="true">→</span></a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No prototype records match these filters.</h3>
+    <p>Try a broader search or clear the selected category and audience.</p>
+    <a class="button secondary" href="/">Clear all filters</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

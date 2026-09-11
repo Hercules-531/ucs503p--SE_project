@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Developer console · BharatOS{% endblock %}
+{% block content %}
+<section class="content-shell console-page">
+  <div class="section-header">
+    <div><p class="eyebrow">Developer workspace</p><h1>One contract for public data.</h1><p class="lede">Exercise the working phase-one API and inspect the normalized response envelope.</p></div>
+    <span class="phase-badge">Phase 1 · Prototype</span>
+  </div>
+
+  <div class="metric-grid">
+    <article class="metric"><span>Prototype records</span><strong>{{ scheme_count }}</strong><small>Across 7 categories</small></article>
+    <article class="metric"><span>Requests this session</span><strong id="request-count">0</strong><small>Browser-only counter</small></article>
+    <article class="metric"><span>API status</span><strong class="metric-word">Operational</strong><small>Local process</small></article>
+  </div>
+
+  <div class="console-grid">
+    <section class="work-panel key-panel">
+      <div class="panel-title"><div><p class="eyebrow">Authentication</p><h2>Prototype API key</h2></div><span class="status-inline">Active</span></div>
+      <p>This visible key exists only for the lab prototype. Production keys will be generated per developer and stored as hashes.</p>
+      <div class="key-field"><code id="demo-key">{{ demo_key }}</code><button type="button" class="copy-button" data-copy-target="demo-key">Copy</button></div>
+      <p class="field-note">Send as <code>X-API-Key: {{ demo_key }}</code></p>
+    </section>
+
+    <section class="work-panel playground-panel">
+      <div class="panel-title"><div><p class="eyebrow">Live request</p><h2>API playground</h2></div><span id="request-status" class="request-status">Ready</span></div>
+      <form id="api-playground" class="playground-form">
+        <label><span>Endpoint</span>
+          <select id="endpoint-select">
+            <option value="schemes">List schemes</option>
+            <option value="scheme">Get scheme by ID</option>
+            <option value="pincode">Look up PIN code</option>
+          </select>
+        </label>
+        <label><span id="parameter-label">Search or category (optional)</span><input id="endpoint-parameter" placeholder="Try health"></label>
+        <button class="button primary" type="submit">Run request</button>
+      </form>
+      <div class="request-line"><span class="http-method">GET</span><code id="request-url">/api/v1/schemes</code></div>
+      <pre class="response-view" tabindex="0"><code id="api-response">Select an endpoint and run the request.</code></pre>
+    </section>
+  </div>
+
+  <section class="endpoint-strip" aria-labelledby="endpoint-heading">
+    <div><p class="eyebrow">Available now</p><h2 id="endpoint-heading">Three versioned endpoints</h2></div>
+    <div class="endpoint-list">
+      <code><span>GET</span> /api/v1/schemes</code>
+      <code><span>GET</span> /api/v1/schemes/{scheme_id}</code>
+      <code><span>GET</span> /api/v1/locations/pincode/{pincode}</code>
+    </div>
+  </section>
+</section>
+{% endblock %}
+
