@@ -9,6 +9,7 @@ class SourceMetadata(BaseModel):
     url: HttpUrl
     last_verified: date | None
     snapshot_date: date | None = None
+    snapshot_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     license_name: str | None = None
     license_url: HttpUrl | None = None
     provenance_kind: Literal["third_party_mirror"] | None = None

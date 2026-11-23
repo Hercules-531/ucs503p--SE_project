@@ -48,6 +48,7 @@ def test_mirror_import_preserves_unverified_provenance(tmp_path, monkeypatch):
         assert source["review_reason"] == "unverified_mirror"
         assert source["last_verified"] is None
         assert source["snapshot_date"] == "2024-05-05"
+        assert source["snapshot_sha256"] == hashlib.sha256(contents).hexdigest()
         assert response.json()["meta"]["last_verified"] is None
         assert "not an official verification" in source["verification_note"]
     engine.dispose()

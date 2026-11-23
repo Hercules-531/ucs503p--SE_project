@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 
 import pytest
@@ -21,7 +22,8 @@ def test_csv_groups_offices_and_preserves_attribution(tmp_path):
     engine = create_database(f"sqlite:///{(tmp_path / 'data.db').as_posix()}")
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        adapter = OgdPincodeCsvAdapter(csv_path, datetime.now(UTC).date())
+        digest = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        adapter = OgdPincodeCsvAdapter(csv_path, datetime.now(UTC).date(), expected_sha256=digest)
         assert ingest(session, adapter).accepted == 2
         records = read_records(session, "location")
         first = next(record for record in records if record["pincode"] == "123456")
@@ -29,7 +31,16 @@ def test_csv_groups_offices_and_preserves_attribution(tmp_path):
         assert first["offices"][1]["district"] == "Second"
         assert first["source"]["license_name"] == "Government Open Data License - India"
         assert first["source"]["url"].startswith("https://www.data.gov.in/")
+        assert first["source"]["snapshot_sha256"] == digest
     engine.dispose()
+
+
+def test_changed_bytes_fail_before_parsing(tmp_path):
+    csv_path = tmp_path / "changed.csv"
+    csv_path.write_bytes(b"changed bytes")
+    adapter = OgdPincodeCsvAdapter(csv_path, datetime.now(UTC).date(), expected_sha256="0" * 64)
+    with pytest.raises(ValueError, match="does not match the approved digest"):
+        list(adapter.collect())
 
 
 def test_malformed_row_fails_atomically(tmp_path):

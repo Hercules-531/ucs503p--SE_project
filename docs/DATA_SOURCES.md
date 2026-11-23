@@ -48,6 +48,13 @@ The OGD platform's [help page](https://data.gov.in/help) describes API-key gener
 registered users. No user API key has been requested or stored by this project. A locally
 downloaded, independently verified CSV remains an alternative for the existing adapter.
 
+On 23 November 2026, the [OGD resource listing](https://data.gov.in/resource/all-india-pincode-directory-till-last-month)
+identified the resource UUID as `5c2f62fe-5afa-4119-a499-fec9d604d5bd`. The listed public CSV link
+returned HTTP 403 again. The [IndiaAI AIKosh listing](https://aikosh.indiaai.gov.in/home/datasets/details/all_india_pincode_directory_till_last_month_1.html)
+points to that same OGD resource. A full official file remains unavailable in this environment.
+The PIN adapters now store the SHA-256 of each newly imported file with the record provenance.
+The manual official importer can match it against an operator-reviewed digest.
+
 ### Historical third-party mirror
 
 On 14 November 2026 a 2024 [GitHub mirror](https://github.com/dropdevrahul/pincodes-india)

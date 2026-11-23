@@ -1,6 +1,8 @@
 """Import a user-supplied Department of Posts OGD PIN directory CSV."""
 
 import csv
+import hashlib
+import io
 import re
 from collections import defaultdict
 from collections.abc import Iterable
@@ -13,6 +15,15 @@ from app.models import LocationRecord
 
 SOURCE_URL = "https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month"
 LICENSE_URL = "https://data.gov.in/Godl"
+MAX_SNAPSHOT_BYTES = 100 * 1024 * 1024
+
+
+def read_snapshot(path: Path) -> bytes:
+    with path.open("rb") as file:
+        data = file.read(MAX_SNAPSHOT_BYTES + 1)
+    if len(data) > MAX_SNAPSHOT_BYTES:
+        raise ValueError("Snapshot exceeds the size limit")
+    return data
 
 
 class OgdPincodeCsvAdapter(DataSourceAdapter):
@@ -22,15 +33,26 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
     id_field = "pincode"
     complete_snapshot = True
 
-    def __init__(self, path: Path, verified_on: date):
+    def __init__(self, path: Path, verified_on: date, *, expected_sha256: str | None = None):
         if verified_on > datetime.now(UTC).date():
             raise ValueError("Verification date cannot be in the future")
         self.path = path
         self.verified_on = verified_on
+        if expected_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+            raise ValueError("Expected checksum must be a lowercase SHA-256 digest")
+        self.expected_sha256 = expected_sha256
 
     def collect(self) -> Iterable[dict[str, Any]]:
-        with self.path.open("r", encoding="utf-8-sig", newline="") as file:
-            yield from self.collect_file(file)
+        yield from self.collect_bytes(read_snapshot(self.path))
+
+    def collect_bytes(self, data: bytes) -> Iterable[dict[str, Any]]:
+        digest = hashlib.sha256(data).hexdigest()
+        if self.expected_sha256 is not None and digest != self.expected_sha256:
+            raise ValueError("Snapshot checksum does not match the approved digest")
+        with io.StringIO(data.decode("utf-8-sig"), newline="") as file:
+            for record in self.collect_file(file):
+                record["source"]["snapshot_sha256"] = digest
+                yield record
 
     def collect_file(self, file: TextIO) -> Iterable[dict[str, Any]]:
         grouped: dict[str, set[tuple[str, str, str]]] = defaultdict(set)

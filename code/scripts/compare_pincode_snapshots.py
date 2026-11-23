@@ -8,8 +8,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.ogd_pincode import OgdPincodeCsvAdapter
-from app.pincode_mirror import MAX_BYTES, MIRROR_SHA256, PincodeMirrorAdapter
+from app.ogd_pincode import OgdPincodeCsvAdapter, read_snapshot
+from app.pincode_mirror import MIRROR_SHA256, PincodeMirrorAdapter
 
 
 def collect_offices(records) -> dict[str, set[tuple[str, str, str]]]:
@@ -23,11 +23,7 @@ def collect_offices(records) -> dict[str, set[tuple[str, str, str]]]:
 
 
 def compare(candidate: Path, mirror: Path) -> dict:
-    if candidate.stat().st_size > MAX_BYTES:
-        raise ValueError("Candidate snapshot exceeds the size limit")
-    data = candidate.read_bytes()
-    if len(data) > MAX_BYTES:
-        raise ValueError("Candidate snapshot exceeds the size limit")
+    data = read_snapshot(candidate)
     adapter = OgdPincodeCsvAdapter(candidate, datetime.now(UTC).date())
     with io.StringIO(data.decode("utf-8-sig"), newline="") as source:
         candidate_records = collect_offices(adapter.collect_file(source))

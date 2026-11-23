@@ -203,6 +203,11 @@ verify its origin and licence, and import it into a migrated database:
 .venv\Scripts\python.exe -m scripts.ingest_ogd_pincode path\to\pincodes.csv --verified-on YYYY-MM-DD
 ```
 
+Use `--sha256` with the lowercase SHA-256 recorded when you reviewed the file to make the
+import fail if the bytes changed. New official and mirror imports include
+`data.source.snapshot_sha256` in PIN responses. The checksum identifies the imported bytes.
+Keep the publisher link and your verification date with the reviewed file.
+
 An optional downloader can request paginated JSON from the official `api.data.gov.in` host when
 the platform provides a resource UUID and a working API key. Obtain both from the official API
 page; do not paste the key into chat or put it in source control. In a private PowerShell session:

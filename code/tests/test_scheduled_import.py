@@ -25,6 +25,7 @@ def test_scheduled_snapshot_skips_unchanged_and_recovers_from_tampering(tmp_path
         assert session.scalar(select(func.count()).select_from(IngestionRun)) == 1
         record = read_records(session, "location")[0]
         assert record["source"]["last_verified"] == verified_on.isoformat()
+        assert record["source"]["snapshot_sha256"] == digest
         assert record["source"]["freshness_status"] == "review_due"
 
         path.write_bytes(original + b"Modified,999999,District,State\n")

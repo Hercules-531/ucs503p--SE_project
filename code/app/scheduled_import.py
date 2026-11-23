@@ -1,7 +1,6 @@
 """Run a checked local snapshot import without relabelling old data as newly verified."""
 
 import hashlib
-import io
 import re
 from datetime import date
 from pathlib import Path
@@ -10,10 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ingestion import ingest
-from app.ogd_pincode import OgdPincodeCsvAdapter
+from app.ogd_pincode import OgdPincodeCsvAdapter, read_snapshot
 from app.storage import ImportCheckpoint, IngestionRun, utc_now
-
-MAX_SNAPSHOT_BYTES = 100 * 1024 * 1024
 
 
 class CheckedSnapshotAdapter(OgdPincodeCsvAdapter):
@@ -25,8 +22,9 @@ class CheckedSnapshotAdapter(OgdPincodeCsvAdapter):
     def collect(self):
         if self.error is not None:
             raise ValueError(self.error)
-        with io.StringIO(self.data.decode("utf-8-sig"), newline="") as file:
-            yield from self.collect_file(file)
+        if self.data is None:
+            raise ValueError("Snapshot file could not be read")
+        yield from self.collect_bytes(self.data)
 
 
 def run_checked_import(
@@ -38,11 +36,7 @@ def run_checked_import(
     data = None
     error = None
     try:
-        if path.stat().st_size > MAX_SNAPSHOT_BYTES:
-            raise ValueError("Snapshot exceeds the size limit")
-        data = path.read_bytes()
-        if len(data) > MAX_SNAPSHOT_BYTES:
-            raise ValueError("Snapshot exceeds the size limit")
+        data = read_snapshot(path)
         if hashlib.sha256(data).hexdigest() != expected_sha256:
             raise ValueError("Snapshot checksum does not match the approved digest")
     except OSError:

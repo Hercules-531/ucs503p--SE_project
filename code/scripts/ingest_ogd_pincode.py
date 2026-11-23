@@ -18,11 +18,13 @@ def main() -> None:
     parser.add_argument("--verified-on", type=date.fromisoformat, required=True,
                         help="Date you verified the snapshot, YYYY-MM-DD")
     parser.add_argument("--database-url", default=os.getenv("DATABASE_URL", "sqlite:///bharatos.db"))
+    parser.add_argument("--sha256", help="Approved lowercase SHA-256 digest of the CSV")
     args = parser.parse_args()
+    adapter = OgdPincodeCsvAdapter(args.csv_file, args.verified_on, expected_sha256=args.sha256)
     engine = create_database(args.database_url)
     try:
         with Session(engine) as session:
-            run = ingest(session, OgdPincodeCsvAdapter(args.csv_file, args.verified_on))
+            run = ingest(session, adapter)
             print(f"{run.source}: {run.status}, {run.accepted} PIN codes")
     finally:
         engine.dispose()
