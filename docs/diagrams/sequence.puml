@@ -1,0 +1,59 @@
+@startuml
+title BharatOS — Protected API Request Sequence
+skinparam backgroundColor #F7F9FC
+skinparam shadowing false
+skinparam sequenceArrowColor #53627A
+skinparam sequenceLifeLineBorderColor #8C99B1
+skinparam participantBorderColor #6978C9
+skinparam participantBackgroundColor #FFFFFF
+skinparam participantFontColor #14213D
+skinparam databaseBorderColor #007F78
+skinparam databaseBackgroundColor #DDF5F1
+skinparam responseMessageBelowArrow true
+
+actor Developer
+participant "API Gateway" as Gateway
+participant "API Key Service" as KeyService
+participant "Rate Limit Service" as Limiter
+participant "Scheme Service" as Service
+database Redis
+database PostgreSQL as DB
+participant "Request Logger" as Logger
+
+Developer -> Gateway: GET /v1/schemes/{id}\nX-API-Key: key
+Gateway -> KeyService: validate(key)
+
+alt key missing, invalid or revoked
+  KeyService --> Gateway: invalid
+  Gateway -> Logger: record(401, request metadata)
+  Gateway --> Developer: 401 INVALID_API_KEY
+else key valid
+  KeyService --> Gateway: developer_id
+  Gateway -> Limiter: consumeQuota(developer_id)
+  Limiter -> Redis: INCR rate-limit key
+  Redis --> Limiter: current count + TTL
+
+  alt quota exceeded
+    Limiter --> Gateway: denied + retry_after
+    Gateway -> Logger: record(429, request metadata)
+    Gateway --> Developer: 429 RATE_LIMITED
+  else quota available
+    Limiter --> Gateway: allowed
+    Gateway -> Redis: GET response cache key
+
+    alt cache hit
+      Redis --> Gateway: cached response + freshness
+    else cache miss
+      Redis --> Gateway: null
+      Gateway -> Service: getScheme(id)
+      Service -> DB: SELECT normalized record + source
+      DB --> Service: scheme record
+      Service --> Gateway: canonical response data
+      Gateway -> Redis: SET response with TTL
+    end
+
+    Gateway -> Logger: record(status, latency, endpoint)
+    Gateway --> Developer: 200 data + provenance metadata
+  end
+end
+@enduml

@@ -1,0 +1,13 @@
+.git
+.venv
+.uv-cache
+.pytest_cache
+.ruff_cache
+.playwright-cli
+__pycache__
+*.pyc
+.env
+tmp
+output
+data
+bharatos.db

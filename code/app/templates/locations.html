@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}PIN lookup · BharatOS{% endblock %}
+{% block content %}
+<section class="content-shell location-page">
+  <div class="section-header compact">
+    <div>
+      <p class="eyebrow">Location directory</p>
+      <h1>Find post offices by PIN.</h1>
+      <p class="lede">Search the records loaded in this local project. Check the source and its date before relying on a result.</p>
+    </div>
+  </div>
+  <form method="get" action="/locations" class="search-panel location-search" aria-label="PIN code search">
+    <label>
+      <span>Six-digit PIN code</span>
+      <input name="pincode" value="{{ pincode }}" inputmode="numeric" autocomplete="postal-code"
+             pattern="[0-9]{6}" minlength="6" maxlength="6" required
+             {% if error %}aria-invalid="true" aria-describedby="location-error"{% endif %}>
+    </label>
+    <button class="button primary" type="submit">Find offices</button>
+  </form>
+
+  {% if error %}
+  <div class="empty-state" id="location-error" role="alert"><h2>Unable to show a result</h2><p>{{ error }}</p></div>
+  {% endif %}
+
+  {% if location %}
+  <div class="detail-layout location-result">
+    <section class="work-panel" aria-labelledby="office-heading">
+      <p class="eyebrow">PIN {{ location.pincode }}</p>
+      <h2 id="office-heading">Post offices in this record</h2>
+      {% if not location.offices %}<p>Only one sample office is recorded here; more may exist.</p>{% endif %}
+      <div class="api-table-wrap"><table class="api-table">
+        <thead><tr><th>Office</th><th>District</th><th>State</th></tr></thead>
+        <tbody>{% for office in location.offices or [location] %}<tr><td>{{ office.office_name }}</td><td>{{ office.district }}</td><td>{{ office.state }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </section>
+    <aside class="source-panel">
+      <p class="eyebrow">Data provenance</p>
+      <strong>{{ location.source.name }}</strong>
+      <dl>
+        <div><dt>Status</dt><dd>{% if location.source.freshness_status == 'current' %}Recently checked{% elif location.source.freshness_status == 'review_due' %}Review needed{% else %}Unknown{% endif %}</dd></div>
+        <div><dt>Verified</dt><dd>{% if location.source.last_verified %}{{ location.source.last_verified.strftime('%d %b %Y') }}{% else %}Not independently verified{% endif %}</dd></div>
+        {% if location.source.snapshot_date %}<div><dt>Snapshot date</dt><dd>{{ location.source.snapshot_date.strftime('%d %b %Y') }}</dd></div>{% endif %}
+      </dl>
+      {% if location.source.verification_note %}<p>{{ location.source.verification_note }}</p>{% endif %}
+      {% if location.source.review_reason == 'unverified_mirror' %}<p>This historical third-party copy has not been compared with the current official directory.</p>{% elif location.source.review_reason == 'absent_from_snapshot' %}<p>This record was absent from the latest imported snapshot; verify with the source.</p>{% elif location.source.review_reason == 'import_failed' %}<p>The latest import failed; this earlier record is retained for review.</p>{% endif %}
+      {% include "_source_check.html" %}
+      <a class="button primary" href="{{ location.source.url }}" target="_blank" rel="noopener noreferrer">View listed source</a>
+      {% if location.source.original_source_url %}<p><a href="{{ location.source.original_source_url }}" target="_blank" rel="noopener noreferrer">Original source listed by mirror</a></p>{% endif %}
+    </aside>
+  </div>
+  <div class="advisory-box location-notice" role="note"><strong>Confirm before use.</strong><p>PINs and office details can change. BharatOS does not verify delivery availability or provide an official address decision.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

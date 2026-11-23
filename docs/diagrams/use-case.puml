@@ -1,0 +1,84 @@
+@startuml
+title BharatOS — Use Case Diagram
+left to right direction
+skinparam backgroundColor #F7F9FC
+skinparam shadowing false
+skinparam actorStyle awesome
+skinparam ArrowColor #53627A
+skinparam ActorBorderColor #283593
+skinparam ActorFontColor #14213D
+skinparam UsecaseBorderColor #6978C9
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam UsecaseFontColor #14213D
+skinparam RectangleBorderColor #B7C0D3
+skinparam RectangleBackgroundColor #EEF1FB
+skinparam PackageBorderColor #8C99B1
+skinparam PackageBackgroundColor #FFFFFF
+
+actor "Public User" as Citizen
+actor "Registered\nDeveloper" as Developer
+actor Administrator as Admin
+actor "Government\nData Source" as GovSource
+actor Scheduler
+
+Developer --|> Citizen
+
+rectangle "BharatOS" {
+  package "Citizen discovery" {
+    usecase "Search and filter\nschemes" as UC_Search
+    usecase "View scheme details" as UC_Details
+    usecase "Look up PIN code" as UC_Pin
+    usecase "Review source and\nfreshness" as UC_Provenance
+    usecase "Check potential fit" as UC_Fit
+  }
+
+  package "Developer platform" {
+    usecase "Register and sign in" as UC_Login
+    usecase "Authenticate developer\nsession" as UC_Auth
+    usecase "Manage API keys" as UC_Keys
+    usecase "Read API documentation" as UC_Docs
+    usecase "Test an endpoint" as UC_Test
+    usecase "Call versioned API" as UC_Call
+    usecase "View usage analytics" as UC_Usage
+    usecase "Validate API key" as UC_ValidateKey
+    usecase "Enforce rate limit" as UC_RateLimit
+    usecase "Attach provenance" as UC_AttachSource
+  }
+
+  package "Data operations" {
+    usecase "Manage source registry" as UC_Sources
+    usecase "Ingest source data" as UC_Ingest
+    usecase "Validate and normalize" as UC_Normalize
+    usecase "Deduplicate records" as UC_Dedupe
+    usecase "Monitor runs and\ndata freshness" as UC_Monitor
+    usecase "Review users and abuse" as UC_Abuse
+  }
+}
+
+Citizen --> UC_Search
+Citizen --> UC_Details
+Citizen --> UC_Pin
+Citizen --> UC_Fit
+UC_Details ..> UC_Provenance : <<include>>
+
+Developer --> UC_Login
+Developer --> UC_Keys
+Developer --> UC_Docs
+Developer --> UC_Test
+Developer --> UC_Call
+Developer --> UC_Usage
+UC_Keys ..> UC_Auth : <<include>>
+UC_Test ..> UC_Call : <<include>>
+UC_Call ..> UC_ValidateKey : <<include>>
+UC_Call ..> UC_RateLimit : <<include>>
+UC_Call ..> UC_AttachSource : <<include>>
+
+Admin --> UC_Sources
+Admin --> UC_Monitor
+Admin --> UC_Abuse
+Admin --> UC_Ingest
+Scheduler --> UC_Ingest
+GovSource -- UC_Ingest
+UC_Ingest ..> UC_Normalize : <<include>>
+UC_Ingest ..> UC_Dedupe : <<include>>
+@enduml

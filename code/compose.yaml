@@ -1,0 +1,105 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: bharatos
+      POSTGRES_DB: bharatos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bharatos -d bharatos"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  setup:
+    build: .
+    environment: &app_environment
+      DATABASE_URL: postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos
+      REDIS_URL: redis://redis:6379/0
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+  web:
+    build: .
+    environment:
+      <<: *app_environment
+      DATABASE_URL: "${WEB_DATABASE_URL:-postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos}"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${WEB_HTTP_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  proxy:
+    profiles: ["tls"]
+    image: caddy:2.10-alpine
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${TLS_PORT:-8443}:443"
+    volumes:
+      - type: bind
+        source: ./deploy/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+      - caddy_data:/data
+      - caddy_config:/config
+  source-monitor:
+    profiles: ["monitoring"]
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    command: ["python", "-m", "scripts.schedule_source_checks", "--interval-seconds", "${SOURCE_CHECK_INTERVAL_SECONDS:-3600}"]
+    restart: unless-stopped
+  scheduler:
+    profiles: ["ingestion"]
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    volumes:
+      - type: bind
+        source: ${PIN_SNAPSHOT_PATH:-./data/approved-pincode.csv}
+        target: /snapshots/pincode.csv
+        read_only: true
+        bind:
+          create_host_path: false
+    command:
+      - python
+      - -m
+      - scripts.schedule_pincode
+      - /snapshots/pincode.csv
+      - --verified-on
+      - ${PIN_VERIFIED_ON:-}
+      - --sha256
+      - ${PIN_SNAPSHOT_SHA256:-}
+      - --interval-seconds
+      - ${PIN_IMPORT_INTERVAL_SECONDS:-3600}
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

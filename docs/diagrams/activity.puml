@@ -1,0 +1,61 @@
+@startuml
+title BharatOS — Ingestion and Normalization Activity
+skinparam backgroundColor #F7F9FC
+skinparam shadowing false
+skinparam ArrowColor #53627A
+skinparam ActivityBorderColor #6978C9
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityFontColor #14213D
+skinparam ActivityDiamondBackgroundColor #FFF0D8
+skinparam ActivityDiamondBorderColor #EE8F2A
+
+start
+:Select enabled, permitted source;
+:Create ingestion run;
+
+partition "Collect" {
+  :Request public API or read source file;
+  if (Source available?) then (yes)
+    :Record source version and retrieval time;
+  else (no)
+    :Mark run failed;
+    :Keep last known records with stale status;
+    stop
+  endif
+}
+
+partition "Validate and normalize" {
+  while (More raw records?) is (yes)
+    :Parse raw record;
+    if (Schema and values valid?) then (yes)
+      :Map fields to canonical schema;
+      :Preserve original source values;
+      :Standardize names and identifiers;
+      if (Duplicate record?) then (yes)
+        :Merge using deterministic rules;
+      else (no)
+        :Create normalized record;
+      endif
+      :Attach provenance and freshness;
+      :Add to accepted batch;
+    else (no)
+      :Quarantine record with reason;
+      :Increment rejected count;
+    endif
+  endwhile (no)
+}
+
+partition "Store and publish" {
+  if (Batch quality threshold met?) then (yes)
+    :Commit accepted records atomically;
+    :Update search indexes;
+    :Invalidate affected cache keys;
+    :Publish dataset freshness status;
+    :Mark ingestion run successful;
+  else (no)
+    :Roll back batch;
+    :Mark run rejected for review;
+  endif
+}
+stop
+@enduml

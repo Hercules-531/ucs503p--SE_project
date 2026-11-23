@@ -3,36 +3,56 @@
 {% block content %}
 <section class="content-shell admin-page">
   <div class="section-header">
-    <div><p class="eyebrow">Operations preview</p><h1>Know when the data can be trusted.</h1><p class="lede">A read-only mock of the monitoring surface planned for later phases.</p></div>
-    <span class="phase-badge warning">Mock operational data</span>
+    <div><p class="eyebrow">Operations</p><h1>Monitor the data pipeline.</h1><p class="lede">View recorded imports and API request totals.</p></div>
+    <span class="phase-badge">Operations monitoring</span>
   </div>
-
-  <div class="metric-grid four">
-    <article class="metric"><span>Source coverage</span><strong>2</strong><small>Prototype snapshots</small></article>
-    <article class="metric"><span>Fresh records</span><strong>11</strong><small>Checked today</small></article>
-    <article class="metric"><span>API success rate</span><strong>100%</strong><small>Local smoke test</small></article>
-    <article class="metric"><span>Open alerts</span><strong>0</strong><small>Demonstration value</small></article>
-  </div>
-
-  <div class="admin-grid">
-    <section class="work-panel">
-      <div class="panel-title"><div><p class="eyebrow">Pipeline</p><h2>Normalization stages</h2></div><span class="status-inline">Last run passed</span></div>
-      <ol class="pipeline-list">
-        <li class="done"><span>1</span><div><strong>Collect</strong><small>Read permitted snapshots</small></div></li>
-        <li class="done"><span>2</span><div><strong>Validate</strong><small>Reject malformed records</small></div></li>
-        <li class="done"><span>3</span><div><strong>Normalize</strong><small>Map to canonical fields</small></div></li>
-        <li class="done"><span>4</span><div><strong>Enrich</strong><small>Attach source and freshness</small></div></li>
-        <li class="done"><span>5</span><div><strong>Serve</strong><small>Publish through versioned API</small></div></li>
-      </ol>
+  {% if admin_configured %}
+  <section class="work-panel" aria-labelledby="admin-access-heading">
+    <h2 id="admin-access-heading">Administrator access</h2>
+    <form id="admin-access" class="playground-form">
+      <label><span>Administrator token</span><input id="admin-token" type="password" autocomplete="off" required></label>
+      <button class="button primary" type="submit" value="load">Load monitoring</button>
+      <button class="button secondary" type="submit" value="check">Check official pages</button>
+    </form>
+    <p id="admin-message" role="status" aria-live="polite"></p>
+  </section>
+  <div id="admin-results" hidden>
+    <div class="metric-grid four">
+      <article class="metric"><span>Schemes</span><strong id="admin-schemes">0</strong><small>Stored records</small></article>
+      <article class="metric"><span>PIN codes</span><strong id="admin-locations">0</strong><small>Stored records</small></article>
+      <article class="metric"><span>API requests</span><strong id="admin-requests">0</strong><small>Authenticated calls</small></article>
+      <article class="metric"><span>API errors</span><strong id="admin-errors">0</strong><small>HTTP 4xx and 5xx</small></article>
+    </div>
+    <section class="work-panel" aria-labelledby="admin-alert-heading">
+      <h2 id="admin-alert-heading">Current checks</h2>
+      <p>These checks are evaluated when the page is loaded; they do not send notifications.</p>
+      <ul id="admin-alerts"></ul>
+      <p id="admin-alerts-empty" hidden>No current alerts.</p>
     </section>
     <section class="work-panel">
-      <div class="panel-title"><div><p class="eyebrow">Source registry</p><h2>Dataset status</h2></div></div>
-      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Source</th><th>Records</th><th>Status</th><th>Freshness</th></tr></thead><tbody>
-      {% for row in source_rows %}<tr><td>{{ row.name }}</td><td>{{ row.records }}</td><td><span class="table-status {{ row.status|lower }}">{{ row.status }}</span></td><td>{{ row.age }}</td></tr>{% endfor %}
-      </tbody></table></div>
+      <h2>Official page checks</h2>
+      <p>Checks run when requested or through the optional source monitor. They use HTTP HEAD without following redirects; results do not verify dataset content or eligibility.</p>
+      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Source</th><th>Result</th><th>HTTP status</th><th>Checked</th></tr></thead><tbody id="admin-probes"></tbody></table></div>
+    </section>
+    <section class="work-panel">
+      <h2>Cache activity</h2>
+      <p id="admin-cache">Not loaded.</p>
+      <p>Counters reflect the current Redis instance since its last reset. During a Redis outage, errors may not be recorded.</p>
+    </section>
+    <section class="work-panel">
+      <h2>Stored-source freshness</h2>
+      <p>Percentages show records with current verification, required fields, and valid schema/identifier. They do not establish official accuracy. Import status is not a live availability check.</p>
+      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Adapter</th><th>Records</th><th>Fresh</th><th>Complete</th><th>Consistent</th><th>Review due</th><th>Unknown</th><th>Oldest verified</th><th>Last import</th></tr></thead><tbody id="admin-sources"></tbody></table></div>
+      <p id="admin-sources-empty" hidden>No source records stored yet.</p>
+    </section>
+    <section class="work-panel">
+      <h2>Recent ingestion runs</h2>
+      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Source</th><th>Status</th><th>Accepted</th><th>Started</th></tr></thead><tbody id="admin-runs"></tbody></table></div>
+      <p id="admin-empty" hidden>No ingestion runs recorded yet.</p>
     </section>
   </div>
-  <div class="advisory-box admin-note"><strong>Phase boundary</strong><p>This page is intentionally read-only. Scheduled jobs, persistent logs, alerts, PostgreSQL and Redis are planned—not simulated as completed infrastructure.</p></div>
+  {% else %}
+  <div class="advisory-box"><strong>Monitoring is not configured</strong><p>Configure a database and an administrator token of at least 32 characters, then restart the server.</p></div>
+  {% endif %}
 </section>
 {% endblock %}
-

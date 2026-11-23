@@ -1,0 +1,134 @@
+@startuml
+title BharatOS — Core Class Diagram
+skinparam backgroundColor #F7F9FC
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #53627A
+skinparam ClassBorderColor #6978C9
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassHeaderBackgroundColor #E8ECFC
+skinparam ClassFontColor #14213D
+skinparam InterfaceBackgroundColor #DDF5F1
+skinparam InterfaceBorderColor #007F78
+
+enum AccountRole {
+  DEVELOPER
+  ADMINISTRATOR
+}
+
+class DeveloperAccount {
+  +id: UUID
+  +email: str
+  +display_name: str
+  +role: AccountRole
+  +status: AccountStatus
+  +created_at: datetime
+}
+
+class ApiKey {
+  +id: UUID
+  +prefix: str
+  -key_hash: str
+  +created_at: datetime
+  +revoked_at: datetime?
+  +is_active(): bool
+}
+
+class ApiRequestLog {
+  +id: UUID
+  +endpoint: str
+  +status_code: int
+  +latency_ms: int
+  +requested_at: datetime
+}
+
+abstract class NormalizedRecord {
+  +id: str
+  +canonical_name: str
+  +updated_at: datetime
+}
+
+class Scheme {
+  +slug: str
+  +ministry: str
+  +category: str
+  +summary: str
+  +states: str[]
+  +audiences: str[]
+}
+
+class Location {
+  +pincode: str
+  +office_name: str
+  +district: str
+  +state: str
+}
+
+class EligibilityRule {
+  +id: UUID
+  +attribute: str
+  +operator: str
+  +value: str
+  +evaluate(input): bool
+}
+
+class SourceMetadata <<value object>> {
+  +source_name: str
+  +source_url: URL
+  +source_record_id: str?
+  +last_verified: date
+  +freshness_status: str
+}
+
+class Dataset {
+  +id: UUID
+  +name: str
+  +category: str
+  +schema_version: str
+  +status: DatasetStatus
+}
+
+class DataSource {
+  +id: UUID
+  +name: str
+  +base_url: URL
+  +access_type: AccessType
+  +licence: str
+}
+
+class IngestionRun {
+  +id: UUID
+  +started_at: datetime
+  +completed_at: datetime?
+  +status: RunStatus
+  +read_count: int
+  +accepted_count: int
+  +rejected_count: int
+}
+
+interface DataSourceAdapter {
+  +collect(): RawRecord[]
+  +parse(raw): ParsedRecord
+  +validate(record): ValidationResult
+  +normalize(record): NormalizedRecord
+}
+
+class ApiAdapter
+class FileAdapter
+
+DeveloperAccount "1" *-- "0..*" ApiKey : owns
+DeveloperAccount "1" -- "0..*" ApiRequestLog : generates
+ApiKey "1" -- "0..*" ApiRequestLog : authorizes
+NormalizedRecord <|-- Scheme
+NormalizedRecord <|-- Location
+NormalizedRecord "1" *-- "1" SourceMetadata : carries
+Scheme "1" *-- "1..*" EligibilityRule : describes
+Dataset "1" o-- "0..*" NormalizedRecord : contains
+DataSource "1" -- "1..*" Dataset : publishes
+DataSource "1" -- "0..*" IngestionRun : produces
+IngestionRun "1" --> "1" Dataset : updates
+DataSourceAdapter <|.. ApiAdapter
+DataSourceAdapter <|.. FileAdapter
+DataSourceAdapter ..> DataSource : reads
+DataSourceAdapter ..> IngestionRun : reports
+@enduml

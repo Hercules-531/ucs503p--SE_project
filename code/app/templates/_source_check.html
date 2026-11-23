@@ -1,0 +1,19 @@
+{% if source_check %}
+<div class="source-check" role="note">
+  <strong>Last source page check</strong>
+  {% if source_check.status == 'not_checked' %}
+  <p>This source page has not been checked yet.</p>
+  {% else %}
+  <p>{{ source_check.checked_at.strftime('%d %b %Y, %H:%M UTC') }}:
+    {% if source_check.status == 'accessible' %}the page responded to a HEAD request.
+    {% elif source_check.status == 'unavailable' %}the page could not be reached.
+    {% elif source_check.status == 'server_error' %}the page returned a server error.
+    {% elif source_check.status == 'restricted' %}the HEAD request was denied.
+    {% elif source_check.status == 'head_not_supported' %}the page did not accept a HEAD request.
+    {% elif source_check.status == 'redirect' %}the page redirected the request.
+    {% else %}the page returned an unsuccessful response.{% endif %}
+  </p>
+  <p>This is a past check of this exact page; it does not establish current availability or data accuracy. A HEAD request may fail even when the page opens in a browser.</p>
+  {% endif %}
+</div>
+{% endif %}

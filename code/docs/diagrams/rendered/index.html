@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BharatOS UML diagrams</title>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #14213d; background: #f7f9fc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header, main { max-width: 1180px; margin: auto; padding: 32px 24px; }
+    header { padding-top: 55px; padding-bottom: 22px; }
+    h1 { margin: 0 0 10px; font: 700 clamp(2.2rem, 6vw, 4.5rem)/1 Georgia, serif; letter-spacing: -.04em; }
+    header p { max-width: 760px; color: #53627a; font-size: 1.05rem; }
+    .notice { padding: 12px 15px; color: #67430d; background: #fff2dc; border-left: 4px solid #ee8f2a; border-radius: 5px 11px 11px 5px; }
+    article { margin: 0 0 28px; padding: 24px; background: white; border: 1px solid #dbe2ed; border-radius: 18px; box-shadow: 0 14px 38px rgba(20,33,61,.07); }
+    h2 { margin: 0 0 7px; font-size: 1.55rem; letter-spacing: -.025em; }
+    article p { margin: 0 0 18px; color: #53627a; }
+    img { display: block; width: 100%; max-height: 780px; object-fit: contain; border-top: 1px solid #e6eaf1; padding-top: 18px; }
+    .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 14px; }
+    a { color: #283593; font-weight: 750; text-underline-offset: 3px; }
+    footer { max-width: 1180px; margin: auto; padding: 15px 24px 50px; color: #64708a; font-size: .82rem; }
+    @media print { article { break-inside: avoid; box-shadow: none; } .notice { display: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <p style="color:#007f78;font-weight:800;text-transform:uppercase;letter-spacing:.11em;font-size:.75rem">Software Engineering Lab</p>
+    <h1>BharatOS UML diagrams</h1>
+    <p>Five complementary views of the complete target system. Phase one implements the portal and prototype API; infrastructure shown in these diagrams is delivered in later phases.</p>
+    <p class="notice">Student project — not an official Government of India service.</p>
+  </header>
+  <main>
+    <article><h2>1. Use Case Diagram</h2><p>Shows who interacts with BharatOS and the externally meaningful services available to citizens, developers, administrators, data sources and the scheduler.</p><img src="use-case.svg" alt="BharatOS use case diagram"><div class="actions"><a href="use-case.png">PNG</a><a href="use-case.svg">Full-size SVG</a></div></article>
+    <article><h2>2. Class Diagram</h2><p>Shows the core domain model, ownership, multiplicities, inheritance and the adapter contract used to add data sources without rewriting the API.</p><img src="class.svg" alt="BharatOS class diagram"><div class="actions"><a href="class.png">PNG</a><a href="class.svg">Full-size SVG</a></div></article>
+    <article><h2>3. Sequence Diagram</h2><p>Follows a protected developer request through key validation, rate limiting, caching, storage and request logging, including failure branches.</p><img src="sequence.svg" alt="BharatOS API request sequence diagram"><div class="actions"><a href="sequence.png">PNG</a><a href="sequence.svg">Full-size SVG</a></div></article>
+    <article><h2>4. Activity Diagram</h2><p>Shows how raw public data is collected, validated, normalized, deduplicated, enriched, stored and published, including quarantine and rollback paths.</p><img src="activity.svg" alt="BharatOS ingestion activity diagram"><div class="actions"><a href="activity.png">PNG</a><a href="activity.svg">Full-size SVG</a></div></article>
+    <article><h2>5. Component Diagram</h2><p>Separates user interfaces, Python services, operational services, storage and permitted external sources in the target architecture.</p><img src="component.svg" alt="BharatOS component diagram"><div class="actions"><a href="component.png">PNG</a><a href="component.svg">Full-size SVG</a></div></article>
+  </main>
+  <footer>Editable PlantUML sources are stored in <code>docs/diagrams</code>.</footer>
+</body>
+</html>

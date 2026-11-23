@@ -1,0 +1,10 @@
+{
+    # Keep the development CA inside the container; do not alter host trust stores.
+    skip_install_trust
+    auto_https disable_redirects
+}
+
+https://localhost {
+    tls internal
+    reverse_proxy web:8000
+}

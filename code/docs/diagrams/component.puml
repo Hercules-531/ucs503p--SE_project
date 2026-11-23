@@ -1,0 +1,63 @@
+@startuml
+title BharatOS — Target Component Diagram
+left to right direction
+skinparam backgroundColor #F7F9FC
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam ArrowColor #53627A
+skinparam ComponentBorderColor #6978C9
+skinparam ComponentBackgroundColor #FFFFFF
+skinparam ComponentFontColor #14213D
+skinparam DatabaseBorderColor #007F78
+skinparam DatabaseBackgroundColor #DDF5F1
+skinparam CloudBorderColor #EE8F2A
+skinparam CloudBackgroundColor #FFF5E7
+skinparam PackageBorderColor #AAB4C6
+skinparam PackageBackgroundColor #EEF1FB
+
+actor "Public User" as Citizen
+actor Developer
+actor Administrator as Admin
+
+package "Web experience" {
+  [Public Scheme Portal] as Portal
+  [Developer Console] as DevConsole
+  [Admin Dashboard] as AdminUI
+  [API Documentation] as Docs
+}
+
+package "Python services" {
+  [API Gateway] as Gateway
+  [Account & API Key Service] as Auth
+  [Scheme & Location Service] as DataService
+  [Ingestion Worker] as Worker
+  [Monitoring & Request Logging] as Monitor
+}
+
+database "PostgreSQL\nnormalized records" as Postgres
+database "Redis\ncache + rate limits" as Redis
+cloud "Permitted official sources\nOGD · myScheme · API Setu" as Sources
+cloud "Scheduler" as Scheduler
+
+Citizen --> Portal
+Developer --> DevConsole
+Developer --> Docs
+Admin --> AdminUI
+
+Portal --> Gateway : anonymous discovery
+DevConsole --> Gateway : versioned REST + API key
+AdminUI --> Gateway : administrative API
+Docs ..> Gateway : describes contract
+
+Gateway --> Auth : validate identity/key
+Gateway --> Redis : quota + cached responses
+Gateway --> DataService : canonical query
+Gateway --> Monitor : request event
+Auth --> Postgres : accounts + key hashes
+DataService --> Postgres : normalized records + provenance
+Worker --> Postgres : atomic dataset updates
+Worker --> Redis : invalidate cache
+Worker --> Monitor : run metrics
+Scheduler --> Worker : trigger ingestion
+Sources --> Worker : public datasets/APIs
+@enduml

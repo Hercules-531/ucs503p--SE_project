@@ -1,0 +1,54 @@
+name: BharatOS checks
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: code
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: bharatos
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: bharatos_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bharatos -d bharatos_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://bharatos:test-only-password@localhost:5432/bharatos_test
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run alembic upgrade head
+      - run: uv run python -m scripts.ingest_snapshots
+      - run: uv run python -m scripts.ingest_pib_programmes
+      - run: uv run pytest -q
+        env:
+          TEST_SERVICE_DATABASE_URL: postgresql+psycopg://bharatos:test-only-password@localhost:5432/bharatos_test
+          TEST_SERVICE_REDIS_URL: redis://localhost:6379/0
+          TEST_POSTGRES_MIGRATION_URL: postgresql+psycopg://bharatos:test-only-password@localhost:5432/bharatos_test
+          DATABASE_URL: ""
+          REDIS_URL: ""
+      - name: Build and check the application image
+        run: |
+          docker build -t bharatos-ci .
+          docker run --rm bharatos-ci python -m scripts.ingest_pib_transport --help
+          docker run --rm bharatos-ci python -m scripts.ingest_pib_environment --help
+          docker run --rm bharatos-ci python -m scripts.ingest_pib_programmes --help
+          docker run --rm bharatos-ci python -m scripts.schedule_source_checks --help

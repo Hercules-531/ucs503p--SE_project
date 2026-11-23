@@ -8,22 +8,46 @@
   </div>
 
   <div class="metric-grid">
-    <article class="metric"><span>Prototype records</span><strong>{{ scheme_count }}</strong><small>Across 7 categories</small></article>
-    <article class="metric"><span>Requests this session</span><strong id="request-count">0</strong><small>Browser-only counter</small></article>
-    <article class="metric"><span>API status</span><strong class="metric-word">Operational</strong><small>Local process</small></article>
+    <article class="metric"><span>Scheme records</span><strong>{{ scheme_count }}</strong><small>Across {{ category_count }} categories</small></article>
+    <article class="metric"><span>{% if demo_key %}Requests this session{% else %}Your API requests{% endif %}</span><strong id="request-count">0</strong><small>{% if demo_key %}Browser-only counter{% else %}Recorded calls across your keys{% endif %}</small></article>
+    <article class="metric"><span>Local readiness</span><strong id="readiness-status" class="metric-word" aria-live="polite">Not checked</strong><small>Does not check government sources</small></article>
   </div>
 
   <div class="console-grid">
     <section class="work-panel key-panel">
-      <div class="panel-title"><div><p class="eyebrow">Authentication</p><h2>Prototype API key</h2></div><span class="status-inline">Active</span></div>
-      <p>This visible key exists only for the lab prototype. Production keys will be generated per developer and stored as hashes.</p>
+      <div class="panel-title"><div><p class="eyebrow">Authentication</p><h2>API key</h2></div></div>
+      {% if demo_key %}
+      <p>This visible key exists only for the lab prototype.</p>
       <div class="key-field"><code id="demo-key">{{ demo_key }}</code><button type="button" class="copy-button" data-copy-target="demo-key">Copy</button></div>
       <p class="field-note">Send as <code>X-API-Key: {{ demo_key }}</code></p>
+      {% else %}
+      <p>Register or sign in to create and revoke personal API keys.</p>
+      <code id="demo-key"></code>
+      <div id="developer-access">
+        <form id="developer-login" class="playground-form">
+          <label><span>Email</span><input id="developer-email" type="email" autocomplete="email" required maxlength="254"></label>
+          <label><span>Password</span><input id="developer-password" type="password" autocomplete="current-password" required minlength="12" maxlength="128"></label>
+          <div class="developer-actions"><button type="submit" class="button primary">Sign in</button> <button type="button" class="button" id="developer-register">Register</button></div>
+        </form>
+        <div id="developer-signed-in" hidden>
+          <p>Signed in for this page session. Save new keys when they appear; they cannot be shown again.</p>
+          <div class="developer-actions"><button type="button" class="button primary" id="developer-create-key">Create key</button> <button type="button" class="button" id="developer-logout">Sign out</button></div>
+          <div id="new-key-container" hidden><p>New key:</p><div class="key-field"><code id="new-key"></code><button type="button" class="copy-button" data-copy-target="new-key">Copy</button></div></div>
+          <h3>Your keys</h3><ul id="developer-key-list"></ul>
+          <h3>Recorded usage</h3>
+          <p id="usage-average">Sign in to load usage.</p>
+          <ul id="usage-endpoints"></ul>
+          <button type="button" class="button" id="refresh-usage">Refresh usage</button>
+        </div>
+        <p id="developer-message" role="status" aria-live="polite"></p>
+      </div>
+      {% endif %}
     </section>
 
     <section class="work-panel playground-panel">
       <div class="panel-title"><div><p class="eyebrow">Live request</p><h2>API playground</h2></div><span id="request-status" class="request-status">Ready</span></div>
       <form id="api-playground" class="playground-form">
+        {% if not demo_key %}<label><span>API key</span><input id="playground-key" type="password" autocomplete="off" required placeholder="Paste your API key"></label>{% endif %}
         <label><span>Endpoint</span>
           <select id="endpoint-select">
             <option value="schemes">List schemes</option>
@@ -31,7 +55,7 @@
             <option value="pincode">Look up PIN code</option>
           </select>
         </label>
-        <label><span id="parameter-label">Search or category (optional)</span><input id="endpoint-parameter" placeholder="Try health"></label>
+        <label><span id="parameter-label">Search text (optional)</span><input id="endpoint-parameter" placeholder="Try health"></label>
         <button class="button primary" type="submit">Run request</button>
       </form>
       <div class="request-line"><span class="http-method">GET</span><code id="request-url">/api/v1/schemes</code></div>

@@ -10,8 +10,8 @@
     </div>
     <div class="coverage-card" aria-label="Prototype coverage">
       <span class="coverage-number">{{ all_schemes|length }}</span>
-      <span>verified prototype records</span>
-      <small>Snapshot checked 09 Sep 2026</small>
+      <span>source-linked records</span>
+      <small>Check each record's verification date</small>
     </div>
   </div>
 
@@ -37,16 +37,24 @@
     <label>
       <span>Audience</span>
       <select name="audience">
-        <option value="">Everyone</option>
+        <option value="">All audiences</option>
         {% for item in audiences %}<option value="{{ item }}" {% if filters.audience == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
       </select>
     </label>
     <button class="button primary" type="submit">Show matches</button>
+    <label class="include-unknown"><input type="checkbox" name="include_unknown" value="true" {% if filters.include_unknown %}checked{% endif %}><span>Include records with unspecified state or audience details</span></label>
   </form>
 
+  {% if uncertain_exclusions %}
+  <div class="advisory-box filter-notice" role="note">
+    <strong>{{ uncertain_exclusions }} {% if filters.include_unknown %}included{% else %}additional{% endif %} record{% if uncertain_exclusions != 1 %}s have{% else %} has{% endif %} incomplete filter information.</strong>
+    {% if filters.include_unknown %}<p>These records are included for review, but the selected state or audience is not confirmed. Check the official source.</p>{% else %}<p>Selected state or audience filters hide these records because the relevant details are unspecified. Missing information does not mean ineligibility; select the option above to review them.</p>{% endif %}
+  </div>
+  {% endif %}
+
   <div class="results-heading">
-    <div><p class="eyebrow">Catalogue</p><h2>{{ schemes|length }} potential match{% if schemes|length != 1 %}es{% endif %}</h2></div>
-    {% if filters.q or filters.category or filters.audience %}<a class="text-link" href="/">Clear filters</a>{% endif %}
+    <div><p class="eyebrow">Catalogue</p><h2>{{ total_matches }} potential match{% if total_matches != 1 %}es{% endif %}</h2></div>
+    {% if filters.q or filters.category or filters.state or filters.audience %}<a class="text-link" href="/">Clear filters</a>{% endif %}
   </div>
 
   {% if schemes %}
@@ -55,11 +63,12 @@
     <article class="scheme-card">
       <div class="scheme-card-top">
         <span class="category-chip">{{ scheme.category }}</span>
-        <span class="freshness"><span aria-hidden="true">●</span> Source checked</span>
+        <span class="freshness"><span aria-hidden="true">●</span> {% if scheme.source.freshness_status == 'current' %}Recently checked{% elif scheme.source.last_verified %}Review date: {{ scheme.source.last_verified.strftime('%d %b %Y') }}{% else %}Review needed{% endif %}</span>
       </div>
       <p class="scheme-short">{{ scheme.short_name }}</p>
       <h3><a href="/schemes/{{ scheme.slug }}">{{ scheme.name }}</a></h3>
       <p>{{ scheme.summary }}</p>
+      {% if filters.include_unknown and (((filters.state|trim) and not scheme.states) or ((filters.audience|trim) and not scheme.audiences)) %}<p class="unknown-match">State or audience details are unspecified; verify with the source.</p>{% endif %}
       <div class="audience-row" aria-label="Relevant audiences">
         {% for audience in scheme.audiences %}<span>{{ audience }}</span>{% endfor %}
       </div>
@@ -70,6 +79,13 @@
     </article>
     {% endfor %}
   </div>
+  {% if page_count > 1 %}
+  <nav class="catalogue-pagination" aria-label="Scheme result pages">
+    {% if previous_page_url %}<a class="button secondary" href="{{ previous_page_url }}">Previous</a>{% endif %}
+    <span>Page {{ page }} of {{ page_count }}</span>
+    {% if next_page_url %}<a class="button secondary" href="{{ next_page_url }}">Next</a>{% endif %}
+  </nav>
+  {% endif %}
   {% else %}
   <div class="empty-state">
     <h3>No prototype records match these filters.</h3>

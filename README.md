@@ -43,3 +43,15 @@ make docs
 ``` shell
 
 ```
+
+## BharatOS application
+
+From the repository root, change into `code` and run the application.
+
+```powershell
+cd code
+uv sync
+uv run python -m scripts.start_local
+```
+
+Open the localhost address printed at startup. See the [application setup](code/README.md), [lab guide](docs/LAB_GUIDE.md), and [phased roadmap](docs/PHASE_ROADMAP.md).

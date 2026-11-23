@@ -5,7 +5,7 @@
   <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Explore schemes</a><span aria-hidden="true">/</span><span>{{ scheme.short_name }}</span></nav>
   <div class="detail-hero">
     <div>
-      <div class="detail-labels"><span class="category-chip">{{ scheme.category }}</span><span>{{ scheme.states|join(', ') }}</span></div>
+      <div class="detail-labels"><span class="category-chip">{{ scheme.category }}</span><span>{% if scheme.states %}{{ scheme.states|join(', ') }}{% else %}Geographic scope not specified{% endif %}</span></div>
       <p class="eyebrow">{{ scheme.short_name }}</p>
       <h1>{{ scheme.name }}</h1>
       <p class="lede">{{ scheme.summary }}</p>
@@ -14,9 +14,13 @@
       <p class="eyebrow">Source record</p>
       <strong>{{ scheme.source.name }}</strong>
       <dl>
-        <div><dt>Verified</dt><dd>{{ scheme.source.last_verified.strftime('%d %b %Y') }}</dd></div>
-        <div><dt>Status</dt><dd><span class="status-inline">Current snapshot</span></dd></div>
+        {% if scheme.source.snapshot_date %}<div><dt>Source date</dt><dd>{{ scheme.source.snapshot_date.strftime('%d %b %Y') }}</dd></div>{% endif %}
+        <div><dt>Verified</dt><dd>{% if scheme.source.last_verified %}{{ scheme.source.last_verified.strftime('%d %b %Y') }}{% else %}Not independently verified{% endif %}</dd></div>
+        <div><dt>Status</dt><dd><span class="status-inline">{% if scheme.source.freshness_status == 'current' %}Recently checked{% elif scheme.source.freshness_status == 'review_due' %}Review needed{% else %}Unknown{% endif %}</span></dd></div>
       </dl>
+      {% if scheme.source.verification_note %}<p>{{ scheme.source.verification_note }}</p>{% endif %}
+      {% if scheme.source.review_reason == 'absent_from_snapshot' %}<p>This record was not present in the latest imported snapshot. That snapshot may be incomplete; verify with the source.</p>{% elif scheme.source.review_reason == 'import_failed' %}<p>The latest import failed. The previous record is retained for review.</p>{% endif %}
+      {% include "_source_check.html" %}
       <a class="button primary" href="{{ scheme.source.url }}" target="_blank" rel="noopener noreferrer">Open official source</a>
     </aside>
   </div>
@@ -27,7 +31,7 @@
         <p class="eyebrow">Potential fit</p>
         <h2>Who may find this relevant</h2>
         <p>{{ scheme.eligibility_summary }}</p>
-        <div class="audience-row large">{% for audience in scheme.audiences %}<span>{{ audience }}</span>{% endfor %}</div>
+        {% if scheme.audiences %}<div class="audience-row large">{% for audience in scheme.audiences %}<span>{{ audience }}</span>{% endfor %}</div>{% else %}<p>Audience is not specified in this snapshot.</p>{% endif %}
       </section>
       <section class="info-section">
         <p class="eyebrow">Benefit overview</p>
@@ -43,7 +47,7 @@
       <p class="eyebrow">Developer record</p>
       <h2>Retrieve through the API</h2>
       <code>GET /api/v1/schemes/{{ scheme.id }}</code>
-      <p>Use the phase-one key in the <code>X-API-Key</code> header.</p>
+      <p>Use {% if demo_key %}the prototype{% else %}your personal{% endif %} key in the <code>X-API-Key</code> header.</p>
       <a class="text-link" href="/developers?endpoint=scheme&id={{ scheme.id }}">Try this request →</a>
       <hr>
       <p class="meta-line"><span>Canonical ID</span><code>{{ scheme.id }}</code></p>

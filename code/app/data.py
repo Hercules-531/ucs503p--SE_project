@@ -190,7 +190,13 @@ LOCATIONS = {
 
 
 def filter_schemes(
-    *, q: str = "", category: str = "", state: str = "", audience: str = ""
+    *,
+    q: str = "",
+    category: str = "",
+    state: str = "",
+    audience: str = "",
+    include_unknown: bool = False,
+    records: list[Scheme] | None = None,
 ) -> list[Scheme]:
     query = q.strip().casefold()
     category_key = category.strip().casefold()
@@ -204,13 +210,40 @@ def filter_schemes(
         states = {item.casefold() for item in scheme.states}
         audiences = {item.casefold() for item in scheme.audiences}
         category_match = not category_key or scheme.category.casefold() == category_key
-        state_match = not state_key or "all india" in states or state_key in states
-        audience_match = not audience_key or audience_key in audiences
+        state_match = (
+            not state_key
+            or "all india" in states
+            or state_key in states
+            or (include_unknown and not states)
+        )
+        audience_match = (
+            not audience_key or audience_key in audiences or (include_unknown and not audiences)
+        )
         return (
             (not query or query in searchable) and category_match and state_match and audience_match
         )
 
-    return [scheme for scheme in SCHEMES if matches(scheme)]
+    return [scheme for scheme in (SCHEMES if records is None else records) if matches(scheme)]
+
+
+def uncertain_filter_exclusions(
+    records: list[Scheme], *, q: str = "", category: str = "", state: str = "", audience: str = ""
+) -> int:
+    """Count candidates hidden solely because a selected field is unspecified."""
+    state_key, audience_key = state.strip().casefold(), audience.strip().casefold()
+    if not state_key and not audience_key:
+        return 0
+    candidates = filter_schemes(q=q, category=category, records=records)
+    count = 0
+    for scheme in candidates:
+        states = {item.casefold() for item in scheme.states}
+        audiences = {item.casefold() for item in scheme.audiences}
+        state_possible = not state_key or not states or "all india" in states or state_key in states
+        audience_possible = not audience_key or not audiences or audience_key in audiences
+        unknown = bool((state_key and not states) or (audience_key and not audiences))
+        if unknown and state_possible and audience_possible:
+            count += 1
+    return count
 
 
 def find_scheme(identifier: str) -> Scheme | None:

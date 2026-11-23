@@ -12,16 +12,26 @@
       <strong>On this page</strong>
       <a href="#authentication">Authentication</a>
       <a href="#endpoints">Endpoints</a>
+      <a href="/reference">Interactive API reference</a>
+      <a href="/openapi.json">OpenAPI specification</a>
       <a href="#envelope">Response envelope</a>
       <a href="#architecture">Architecture</a>
       <a href="/diagrams/index.html">All UML diagrams</a>
     </aside>
     <div class="docs-content">
       <section id="authentication" class="doc-section">
-        <p class="eyebrow">01 · Authentication</p><h2>Send the demo key as a header</h2>
-        <pre><code>curl http://127.0.0.1:8000/api/v1/schemes \
+        <p class="eyebrow">01 · Authentication</p><h2>Send an API key as a header</h2>
+        <p>For the shell example below, set <code>BHARATOS_URL</code> to the base address printed at startup, without a trailing slash.</p>
+        {% if demo_key %}
+        <pre><code>curl "$BHARATOS_URL/api/v1/schemes" \
   -H "X-API-Key: {{ demo_key }}"</code></pre>
-        <p>The key is intentionally public and fixed for this prototype. Phase 3 replaces it with hashed, revocable developer keys.</p>
+        <p>This public key is available only in the in-memory prototype.</p>
+        {% else %}
+        <pre><code>curl "$BHARATOS_URL/api/v1/schemes" \
+  -H "X-API-Key: YOUR_PERSONAL_KEY"</code></pre>
+        <p>Register and sign in on the <a href="/developers">developer page</a> to create a personal key. Keys are displayed once and can be revoked.</p>
+        {% endif %}
+        <p>Developer account endpoints use an eight-hour session token in the <code>Authorization: Bearer</code> header. If configured, per-key limits return <code>429</code> and <code>Retry-After</code>.</p>
       </section>
 
       <section id="endpoints" class="doc-section">
@@ -31,7 +41,9 @@
           <tr><td><span class="http-method">GET</span></td><td><code>/api/v1/schemes/{scheme_id}</code></td><td>Retrieve one canonical record.</td></tr>
           <tr><td><span class="http-method">GET</span></td><td><code>/api/v1/locations/pincode/{pincode}</code></td><td>Resolve one prototype PIN-code record.</td></tr>
         </tbody></table></div>
-        <p>Scheme-list query parameters: <code>q</code>, <code>category</code>, <code>state</code>, and <code>audience</code>.</p>
+        <p>Scheme-list query parameters: <code>q</code>, <code>category</code>, <code>state</code>, and <code>audience</code>. Optionally add <code>limit</code> (1–100) and <code>offset</code> (starting at 0) to page through matches in scheme-ID order. The response reports page size in <code>result_count</code> and all matching records in <code>total_count</code>. Offsets require a limit. Changes between requests can shift pages; without a limit, the existing complete-list behavior remains.</p>
+        <p><code>meta.uncertain_excluded_count</code> counts potentially relevant records excluded because a selected state or audience is unspecified. Set <code>include_unknown=true</code> to include those records; <code>meta.uncertain_included_count</code> then reports their total. Both counts cover the full matching set, not only the current page. Inclusion is not an eligibility decision.</p>
+        <p>Account registration, sign-in, key management and usage endpoints are listed in the <a href="/reference">interactive reference</a>. The <a href="/openapi.json">OpenAPI JSON</a> can be used by client generators.</p>
       </section>
 
       <section id="envelope" class="doc-section">
@@ -55,11 +67,12 @@
   }
 }</code></pre></div>
         </div>
+        <p>For a scheme list, <code>last_verified</code> is the oldest verification date among the returned records. If a response page is empty, including when its offset is beyond the matches, it reflects the available catalogue. It is <code>null</code> for an empty catalogue or when a relevant record has no verification date. A third-party mirror's <code>snapshot_date</code> is its commit date, not an official verification date.</p>
       </section>
 
       <section id="architecture" class="doc-section">
         <p class="eyebrow">04 · Architecture</p><h2>Target component model</h2>
-        <p>Phase one implements the portal and mock API. PostgreSQL, Redis, production authentication and scheduled ingestion are shown as the intended target architecture.</p>
+        <p>The diagram shows the target architecture. Database-backed records, developer keys and optional Redis support are implemented; scheduled ingestion and production hardening remain in progress.</p>
         <a class="diagram-frame" href="/diagrams/component.svg" target="_blank"><img src="/diagrams/component.svg" alt="BharatOS target component UML diagram"><span>Open full-size diagram →</span></a>
         <a class="text-link" href="/diagrams/index.html">Browse all five diagrams and explanations →</a>
       </section>

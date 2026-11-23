@@ -21,6 +21,7 @@
     <button class="mobile-menu" type="button" aria-expanded="false" aria-controls="main-nav">Menu</button>
     <nav id="main-nav" class="main-nav" aria-label="Primary navigation">
       <a href="/" {% if active_page == 'explore' %}aria-current="page"{% endif %}>Explore schemes</a>
+      <a href="/locations" {% if active_page == 'locations' %}aria-current="page"{% endif %}>PIN lookup</a>
       <a href="/developers" {% if active_page == 'developers' %}aria-current="page"{% endif %}>Developers</a>
       <a href="/docs" {% if active_page == 'docs' %}aria-current="page"{% endif %}>API docs</a>
       <a href="/admin" {% if active_page == 'admin' %}aria-current="page"{% endif %}>Admin view</a>
