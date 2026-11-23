@@ -1,10 +1,48 @@
 """Maintain and query scheme metadata indexes without persisting user searches."""
 
-from sqlalchemy import Select, delete, exists, func, or_, select
+import json
+from dataclasses import dataclass
+
+from sqlalchemy import Select, Text, cast, delete, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Scheme
 from app.storage import SchemeFilterValue, SchemeIndex, StoredRecord
+
+
+@dataclass
+class CatalogueFacets:
+    record_count: int
+    categories: list[str]
+    states: list[str]
+    audiences: list[str]
+
+
+def catalogue_facets(session: Session) -> CatalogueFacets:
+    """Read distinct filter labels without loading source and eligibility payloads."""
+    categories: set[str] = set()
+    states: set[str] = set()
+    audiences: set[str] = set()
+    query = (
+        select(
+            StoredRecord.payload["category"].as_string(),
+            cast(StoredRecord.payload["states"], Text),
+            cast(StoredRecord.payload["audiences"], Text),
+        )
+        .where(StoredRecord.kind == "scheme")
+        .distinct()
+    )
+    for category, state_json, audience_json in session.execute(query):
+        if category:
+            categories.add(category)
+        # Older payloads without states use the same nationwide default as Scheme.
+        states.update(json.loads(state_json) if state_json not in (None, "null") else ["All India"])
+        if audience_json not in (None, "null"):
+            audiences.update(json.loads(audience_json))
+    count = session.scalar(
+        select(func.count()).select_from(StoredRecord).where(StoredRecord.kind == "scheme")
+    )
+    return CatalogueFacets(count, sorted(categories), sorted(states), sorted(audiences))
 
 
 def searchable_text(scheme: Scheme) -> str:

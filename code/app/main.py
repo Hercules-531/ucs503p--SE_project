@@ -29,7 +29,13 @@ from starlette.concurrency import run_in_threadpool
 
 from app.cache import cache_metrics, cached_records
 from app.credentials import new_token, password_hash, token_hash, verify_password
-from app.data import LOCATIONS, SCHEMES, filter_schemes, uncertain_filter_exclusions
+from app.data import (
+    INDIAN_STATES_AND_UTS,
+    LOCATIONS,
+    SCHEMES,
+    filter_schemes,
+    uncertain_filter_exclusions,
+)
 from app.models import (
     ErrorDetail,
     ErrorEnvelope,
@@ -41,7 +47,13 @@ from app.models import (
 from app.monitoring import monitoring_alerts, source_summaries
 from app.privacy import install_access_log_filter
 from app.rate_limit import RedisRateLimiter
-from app.search import indexed_scheme_page, indexed_schemes, indexed_uncertain_exclusions
+from app.search import (
+    CatalogueFacets,
+    catalogue_facets,
+    indexed_scheme_page,
+    indexed_schemes,
+    indexed_uncertain_exclusions,
+)
 from app.source_checks import latest_source_checks, run_source_checks, source_check_for_url
 from app.storage import (
     ApiKey,
@@ -632,18 +644,17 @@ def home(
     page: int = Query(default=1, ge=1, le=100000),
 ) -> HTMLResponse:
     page_size = 12
-    all_schemes = current_schemes()
+    filters = {"q": q, "category": category, "state": state, "audience": audience}
     if engine is not None:
         with Session(engine) as session:
+            facets = catalogue_facets(session)
+            uncertain_exclusions = indexed_uncertain_exclusions(session, **filters)
             schemes, total = indexed_scheme_page(
                 session,
                 limit=page_size,
                 offset=(page - 1) * page_size,
-                q=q,
-                category=category,
-                state=state,
-                audience=audience,
                 include_unknown=include_unknown,
+                **filters,
             )
             page_count = max(1, (total + page_size - 1) // page_size)
             if page > page_count:
@@ -652,21 +663,23 @@ def home(
                     session,
                     limit=page_size,
                     offset=(page - 1) * page_size,
-                    q=q,
-                    category=category,
-                    state=state,
-                    audience=audience,
                     include_unknown=include_unknown,
+                    **filters,
                 )
     else:
+        all_schemes = current_schemes()
+        facets = CatalogueFacets(
+            len(all_schemes),
+            sorted({item.category for item in all_schemes}),
+            sorted({name for item in all_schemes for name in item.states}),
+            sorted({name for item in all_schemes for name in item.audiences}),
+        )
+        uncertain_exclusions = uncertain_filter_exclusions(all_schemes, **filters)
         matched = sorted(
             filter_schemes(
-                q=q,
-                category=category,
-                state=state,
-                audience=audience,
                 records=all_schemes,
                 include_unknown=include_unknown,
+                **filters,
             ),
             key=lambda item: item.id,
         )
@@ -676,8 +689,7 @@ def home(
         schemes = matched[(page - 1) * page_size : page * page_size]
 
     def page_link(number: int) -> str:
-        params = {"q": q, "category": category, "state": state, "audience": audience}
-        params = {key: value for key, value in params.items() if value}
+        params = {key: value for key, value in filters.items() if value}
         if include_unknown:
             params["include_unknown"] = "true"
         params["page"] = str(number)
@@ -686,25 +698,17 @@ def home(
     context = {
         **common_context("explore"),
         "schemes": schemes,
-        "all_schemes": all_schemes,
+        "catalogue_count": facets.record_count,
         "total_matches": total,
         "page": page,
         "page_count": page_count,
         "previous_page_url": page_link(page - 1) if page > 1 else None,
         "next_page_url": page_link(page + 1) if page < page_count else None,
-        "filters": {
-            "q": q,
-            "category": category,
-            "state": state,
-            "audience": audience,
-            "include_unknown": include_unknown,
-        },
-        "categories": sorted({item.category for item in all_schemes}),
-        "states": sorted({state_name for item in all_schemes for state_name in item.states}),
-        "audiences": sorted({aud for item in all_schemes for aud in item.audiences}),
-        "uncertain_exclusions": uncertain_filter_exclusions(
-            all_schemes, q=q, category=category, state=state, audience=audience
-        ),
+        "filters": {**filters, "include_unknown": include_unknown},
+        "categories": facets.categories,
+        "states": sorted(INDIAN_STATES_AND_UTS.union(facets.states)),
+        "audiences": facets.audiences,
+        "uncertain_exclusions": uncertain_exclusions,
     }
     return templates.TemplateResponse(request=request, name="index.html", context=context)
 

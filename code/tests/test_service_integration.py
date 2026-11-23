@@ -15,7 +15,12 @@ from app.data import LOCATIONS, SCHEMES, filter_schemes, uncertain_filter_exclus
 from app.ingestion import DataSourceAdapter, SchemeSnapshotAdapter, ingest
 from app.models import LocationRecord, Scheme
 from app.rate_limit import RedisRateLimiter
-from app.search import indexed_scheme_page, indexed_schemes, indexed_uncertain_exclusions
+from app.search import (
+    catalogue_facets,
+    indexed_scheme_page,
+    indexed_schemes,
+    indexed_uncertain_exclusions,
+)
 from app.source_checks import store_source_checks
 from app.storage import SourceProbe, StoredRecord, create_database, read_records
 
@@ -76,6 +81,13 @@ def test_postgres_indexed_search_matches_snapshot_filters():
     engine = create_database(os.environ["TEST_SERVICE_DATABASE_URL"])
     with Session(engine) as session:
         records = [Scheme.model_validate(item) for item in read_records(session, "scheme")]
+        facets = catalogue_facets(session)
+        assert facets.record_count == len(records)
+        assert facets.categories == sorted({record.category for record in records})
+        assert facets.states == sorted({state for record in records for state in record.states})
+        assert facets.audiences == sorted(
+            {audience for record in records for audience in record.audiences}
+        )
         for filters in (
             {"q": "HEALTH"},
             {"state": "Punjab"},

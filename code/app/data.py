@@ -4,6 +4,48 @@ from app.models import LocationRecord, Scheme, SourceMetadata
 
 VERIFIED_ON = date(2026, 9, 9)
 
+# Integrated Government Online Directory: https://igod.gov.in/sg/states
+INDIAN_STATES_AND_UTS = frozenset(
+    {
+        "Andaman and Nicobar Islands",
+        "Andhra Pradesh",
+        "Arunachal Pradesh",
+        "Assam",
+        "Bihar",
+        "Chandigarh",
+        "Chhattisgarh",
+        "Dadra and Nagar Haveli and Daman and Diu",
+        "Delhi",
+        "Goa",
+        "Gujarat",
+        "Haryana",
+        "Himachal Pradesh",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Ladakh",
+        "Lakshadweep",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Manipur",
+        "Meghalaya",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Puducherry",
+        "Punjab",
+        "Rajasthan",
+        "Sikkim",
+        "Tamil Nadu",
+        "Telangana",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand",
+        "West Bengal",
+    }
+)
+
 
 def source(name: str, url: str) -> SourceMetadata:
     return SourceMetadata(name=name, url=url, last_verified=VERIFIED_ON)

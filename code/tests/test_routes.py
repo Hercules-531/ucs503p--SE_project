@@ -51,6 +51,8 @@ def test_state_filter_offers_clear_link() -> None:
     response = client.get("/", params={"state": "Punjab"})
     assert response.status_code == 200
     assert "Clear filters" in response.text
+    assert 'value="Punjab" selected' in response.text
+    assert 'value="Ladakh"' in response.text
 
 
 @pytest.mark.parametrize("database_mode", [False, True])
@@ -63,6 +65,8 @@ def test_catalogue_pagination_preserves_filters(tmp_path, monkeypatch, database_
         record.name = f"Page Fixture {index:02}"
         record.states, record.audiences = [], []
         records.append(record)
+    records[-1].states = ["Punjab"]
+    records[-1].audiences = ["OBC students"]
 
     class Fixture(SchemeSnapshotAdapter):
         def collect(self):
@@ -74,6 +78,11 @@ def test_catalogue_pagination_preserves_filters(tmp_path, monkeypatch, database_
         Base.metadata.create_all(engine)
         with Session(engine) as session:
             ingest(session, Fixture())
+
+        def reject_full_catalogue():
+            pytest.fail("A paginated database request must not load the full catalogue")
+
+        monkeypatch.setattr(web, "current_schemes", reject_full_catalogue)
     else:
         monkeypatch.setattr(web, "current_schemes", lambda: records)
     monkeypatch.setattr(web, "engine", engine)
@@ -82,6 +91,9 @@ def test_catalogue_pagination_preserves_filters(tmp_path, monkeypatch, database_
     first = client.get("/", params=params)
     assert first.status_code == 200
     assert "25 potential matches" in first.text
+    assert 'value="Punjab" selected' in first.text
+    assert 'value="OBC students"' in first.text
+    assert "24 included records have incomplete filter information" in first.text
     assert "Page 1 of 3" in first.text
     assert "Page Fixture 00" in first.text and "Page Fixture 12" not in first.text
     next_match = re.search(r'href="([^"]+)">Next</a>', first.text)

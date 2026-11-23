@@ -7,7 +7,8 @@ BharatOS is a Software Engineering Lab project that explores a unified interface
 ## Current capabilities
 
 - Search and filter eight default source-linked scheme snapshots; database mode supports additional imports.
-- Browse scheme results in pages while keeping search filters.
+- Browse scheme results in pages while keeping search filters. In database mode, the public
+  page loads only the current page's full scheme records and queries filter labels separately.
 - View scheme detail, potential-fit guidance, provenance and freshness.
 - Search loaded PIN-code records anonymously at `/locations`, including their provenance and offices.
 - Exercise three versioned data endpoints with a prototype key or a personal key in database mode.

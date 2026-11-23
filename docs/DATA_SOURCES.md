@@ -117,3 +117,8 @@ from the responsible authority.
 
 The project stores brief paraphrases with attribution and a link to the PIB copyright policy.
 The importer runs entirely from the curated local snapshots.
+
+The public scheme filter also lists the states and union territories from the
+[Integrated Government Online Directory](https://igod.gov.in/sg/states). The presence of a region
+in the selector does not establish programme coverage there. Matches still use the scope recorded
+in each scheme snapshot.
