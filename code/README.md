@@ -137,6 +137,11 @@ does not send notifications or retain alert history.
 The dashboard also warns when a source-page check is missing, more than 24 hours old, or has an
 invalid future timestamp. A check is a point-in-time observation, not continuous monitoring.
 
+The dataset registry records the adapter's canonical record type and snapshot policy, including
+first runs that fail before publishing records. Migration backfills identities from records and
+run history. Policies for older entries become known after another import attempt. Apply the new
+migration before running updated imports, and reapply the grants if using the restricted web login.
+
 Scheme and PIN detail pages display a saved check when their exact source URL is in the fixed
 check list. They show the check time and result without running a new network request. A check of
 a home page does not stand in for checks of individual scheme pages; a denied HEAD request is not

@@ -40,9 +40,9 @@
       <p>Counters reflect the current Redis instance since its last reset. During a Redis outage, errors may not be recorded.</p>
     </section>
     <section class="work-panel">
-      <h2>Stored-source freshness</h2>
-      <p>Percentages show records with current verification, required fields, and valid schema/identifier. They do not establish official accuracy. Import status is not a live availability check.</p>
-      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Adapter</th><th>Records</th><th>Fresh</th><th>Complete</th><th>Consistent</th><th>Review due</th><th>Unknown</th><th>Oldest verified</th><th>Last import</th></tr></thead><tbody id="admin-sources"></tbody></table></div>
+      <h2>Datasets and freshness</h2>
+      <p>The snapshot policy describes what the adapter expects to import. Freshness and quality percentages describe the records currently stored.</p>
+      <div class="api-table-wrap"><table class="api-table source-table"><thead><tr><th>Adapter</th><th>Record type</th><th>Snapshot policy</th><th>Records</th><th>Fresh</th><th>Complete</th><th>Consistent</th><th>Review due</th><th>Unknown</th><th>Oldest verified</th><th>Last import</th></tr></thead><tbody id="admin-sources"></tbody></table></div>
       <p id="admin-sources-empty" hidden>No source records stored yet.</p>
     </section>
     <section class="work-panel">

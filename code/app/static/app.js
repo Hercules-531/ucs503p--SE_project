@@ -328,7 +328,10 @@ if (adminAccess) {
       payload.sources.forEach((source) => {
         const row = document.createElement("tr");
         const percent = (value) => value === null ? "Not available" : `${value}%`;
-        [source.source, source.records, percent(source.freshness_percent),
+        const snapshotScope = source.complete_snapshot == null ? "Unknown"
+          : source.complete_snapshot ? "Complete snapshot" : "Partial import";
+        [source.source, source.record_kind || "Unknown", snapshotScope,
+          source.records, percent(source.freshness_percent),
           percent(source.completeness_percent), percent(source.consistency_percent),
           source.review_due, source.unknown,
           source.oldest_verified || "Unknown", source.last_import_status].forEach((value) => {

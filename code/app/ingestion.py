@@ -6,12 +6,14 @@ from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from app.data import LOCATIONS, SCHEMES
 from app.models import LocationRecord, Scheme
 from app.search import update_scheme_index
-from app.storage import DatasetRevision, IngestionRun, StoredRecord, utc_now
+from app.storage import Dataset, DatasetRevision, IngestionRun, StoredRecord, utc_now
 
 LOOKUP_BATCH_SIZE = 500
 
@@ -52,6 +54,27 @@ class LocationSnapshotAdapter(DataSourceAdapter):
 
     def collect(self) -> Iterable[dict[str, Any]]:
         return (record.model_dump(mode="json") for record in LOCATIONS.values())
+
+
+def register_dataset(session: Session, adapter: DataSourceAdapter) -> None:
+    dialect = session.get_bind().dialect.name
+    insert = {"sqlite": sqlite_insert, "postgresql": postgres_insert}[dialect]
+    policy = {
+        "record_kind": adapter.kind,
+        "complete_snapshot": adapter.complete_snapshot,
+        "preserve_other_sources": adapter.preserve_other_sources,
+    }
+    statement = insert(Dataset).values(source_adapter=adapter.name, **policy)
+    registered = session.scalar(
+        statement.on_conflict_do_update(
+            index_elements=[Dataset.source_adapter],
+            set_=policy,
+            where=Dataset.record_kind.is_(None) | (Dataset.record_kind == adapter.kind),
+        ).returning(Dataset.source_adapter)
+    )
+    if registered is None:
+        session.rollback()
+        raise ValueError(f"Dataset {adapter.name} already uses a different record kind")
 
 
 def bump_revision(session: Session, kind: str) -> None:
@@ -101,6 +124,7 @@ def validate_scheme_slugs(session: Session, adapter: DataSourceAdapter, records:
 
 def ingest(session: Session, adapter: DataSourceAdapter) -> IngestionRun:
     """Validate the whole batch before updating records; persist failure without partial writes."""
+    register_dataset(session, adapter)
     run = IngestionRun(source=adapter.name, started_at=utc_now(), status="running", accepted=0)
     session.add(run)
     session.commit()

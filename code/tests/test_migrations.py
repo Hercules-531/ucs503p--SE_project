@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.data import SCHEMES
-from app.storage import SchemeIndex, StoredRecord, create_database, utc_now
+from app.storage import Dataset, IngestionRun, SchemeIndex, StoredRecord, create_database, utc_now
 
 
 def test_upgrade_and_downgrade(tmp_path, monkeypatch):
@@ -63,9 +63,16 @@ def test_slug_migration_backfills_existing_data_and_enforces_uniqueness(tmp_path
                 searchable="fixture",
             )
         )
+    with Session(engine) as session:
+        session.add(IngestionRun(source="first-run-failed", started_at=utc_now(), status="failed"))
+        session.commit()
     command.upgrade(config, "head")
     with Session(engine) as session:
         assert session.scalar(select(SchemeIndex.slug)) == record["slug"]
+        observed = session.get(Dataset, "fixture")
+        assert observed.record_kind == "scheme"
+        assert observed.complete_snapshot is None
+        assert session.get(Dataset, "first-run-failed").record_kind is None
         session.add(
             SchemeIndex(
                 identifier="conflict", slug=record["slug"], category_key="test", searchable="test"
@@ -76,6 +83,7 @@ def test_slug_migration_backfills_existing_data_and_enforces_uniqueness(tmp_path
         session.rollback()
         assert session.get(StoredRecord, ("scheme", record["id"])) is not None
     command.downgrade(config, "20261113_08")
+    assert "datasets" not in inspect(engine).get_table_names()
     assert "slug" not in {
         column["name"] for column in inspect(engine).get_columns("scheme_search_index")
     }

@@ -54,6 +54,7 @@ Delivered in this repository:
 - Introduce PostgreSQL, SQLAlchemy and Alembic migrations.
 - Implement repository and service boundaries around canonical records.
 - Define and implement the `DataSourceAdapter` contract.
+- Track each imported dataset's record kind and snapshot policy in a canonical registry.
 - Ingest one permitted official scheme dataset and one location/PIN-code dataset.
 - Validate, normalize, deduplicate and attach source/freshness metadata.
 - Replace static API data with database-backed queries.

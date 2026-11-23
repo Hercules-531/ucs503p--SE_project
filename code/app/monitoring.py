@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import LocationRecord, Scheme, SourceMetadata
-from app.storage import IngestionRun, StoredRecord
+from app.storage import Dataset, IngestionRun, StoredRecord
 
 REQUIRED_FIELDS = {
     "scheme": (
@@ -57,6 +57,9 @@ def quality_checks(kind: str, identifier: str, payload: object) -> tuple[bool, b
 
 
 def source_summaries(session: Session) -> list[dict]:
+    datasets = {
+        dataset.source_adapter: dataset for dataset in session.scalars(select(Dataset))
+    }
     latest_ids = select(func.max(IngestionRun.id)).group_by(IngestionRun.source)
     latest_runs = {
         run.source: run
@@ -66,8 +69,12 @@ def source_summaries(session: Session) -> list[dict]:
 
     def initialize(adapter: str | None) -> dict:
         latest = latest_runs.get(adapter)
+        dataset = datasets.get(adapter)
         return {
             "source": adapter or "Unassigned legacy records",
+            "record_kind": dataset.record_kind if dataset else None,
+            "complete_snapshot": dataset.complete_snapshot if dataset else None,
+            "preserve_other_sources": dataset.preserve_other_sources if dataset else None,
             "records": 0,
             "current": 0,
             "review_due": 0,
@@ -79,7 +86,7 @@ def source_summaries(session: Session) -> list[dict]:
             "last_import_started_at": latest.started_at.isoformat() if latest else None,
         }
 
-    for adapter in latest_runs:
+    for adapter in datasets.keys() | latest_runs.keys():
         summaries[adapter] = initialize(adapter)
     records = session.execute(
         select(

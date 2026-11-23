@@ -39,6 +39,8 @@ Open the configured local web port. Check `/health/ready`, browse schemes, then 
 developer, create a key, make a request and verify that it appears in usage. The grant script
 can be re-run for the same login. Review its table and sequence list after schema changes and
 reapply it after a restore if the restore omitted grants.
+After applying the dataset registry migration, reapply the grant script to give the web service
+read access to the new registry.
 
 On a database that grants `PUBLIC` permission to create in the `public` schema, the script stops.
 Review that grant with the database owner before running it again. Use a dedicated login without

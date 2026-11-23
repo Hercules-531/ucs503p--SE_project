@@ -116,6 +116,8 @@ def test_first_import_failure_and_cache_outage_generate_alerts(tmp_path, monkeyp
         assert response.status_code == 200
         data = response.json()
         assert data["sources"][0]["records"] == 0
+        assert data["sources"][0]["record_kind"] == "scheme"
+        assert data["sources"][0]["complete_snapshot"] is True
         assert data["sources"][0]["freshness_percent"] is None
         assert {"IMPORT_FAILED", "NO_RECORDS", "CACHE_UNAVAILABLE"}.issubset(
             {alert["code"] for alert in data["alerts"]}

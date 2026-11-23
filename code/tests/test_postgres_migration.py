@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from app.data import SCHEMES
-from app.storage import SchemeIndex, StoredRecord, create_database, utc_now
+from app.storage import Dataset, SchemeIndex, StoredRecord, create_database, utc_now
 
 
 @pytest.mark.skipif(
@@ -68,6 +68,9 @@ def test_populated_postgres_slug_upgrade_and_conflict_recovery(monkeypatch):
         command.upgrade(config, "head")
         with Session(engine) as session:
             assert session.scalar(select(SchemeIndex.slug)) == record["slug"]
+            dataset = session.get(Dataset, "fixture")
+            assert dataset.record_kind == "scheme"
+            assert dataset.complete_snapshot is None
             assert session.get(StoredRecord, ("scheme", record["id"])).payload == record
             session.add(
                 SchemeIndex(

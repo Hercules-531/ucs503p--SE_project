@@ -12,6 +12,7 @@ from app.ingestion import LocationSnapshotAdapter, SchemeSnapshotAdapter, ingest
 from app.storage import (
     ApiKey,
     Base,
+    Dataset,
     DeveloperAccount,
     IngestionRun,
     StoredRecord,
@@ -24,13 +25,23 @@ from app.storage import (
 def test_snapshot_ingestion_is_repeatable_and_attributed(tmp_path):
     engine = create_database(f"sqlite:///{tmp_path / 'test.db'}")
     Base.metadata.create_all(engine)
+
+    class WrongKind(LocationSnapshotAdapter):
+        name = SchemeSnapshotAdapter.name
+
     with Session(engine) as session:
         assert ingest(session, SchemeSnapshotAdapter()).accepted == 8
         assert ingest(session, SchemeSnapshotAdapter()).accepted == 8
+        with pytest.raises(ValueError, match="already uses a different record kind"):
+            ingest(session, WrongKind())
         records = read_records(session, "scheme")
         assert len(records) == 8
         assert all(record["source"]["url"].startswith("https://") for record in records)
         assert len(session.scalars(select(IngestionRun)).all()) == 2
+        dataset = session.get(Dataset, SchemeSnapshotAdapter.name)
+        assert dataset.record_kind == "scheme"
+        assert dataset.complete_snapshot
+        assert not read_records(session, "location")
 
 
 def test_invalid_batch_does_not_overwrite_existing_records(tmp_path):

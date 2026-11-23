@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Date,
     DateTime,
     Float,
@@ -36,6 +37,17 @@ class DatasetRevision(Base):
     __tablename__ = "dataset_revisions"
     kind: Mapped[str] = mapped_column(String(32), primary_key=True)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Dataset(Base):
+    """Canonical dataset identity and the adapter's declared import policy."""
+
+    __tablename__ = "datasets"
+
+    source_adapter: Mapped[str] = mapped_column(String(128), primary_key=True)
+    record_kind: Mapped[str | None] = mapped_column(String(32))
+    complete_snapshot: Mapped[bool | None] = mapped_column(Boolean)
+    preserve_other_sources: Mapped[bool | None] = mapped_column(Boolean)
 
 
 class SchemeIndex(Base):

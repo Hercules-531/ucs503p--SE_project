@@ -30,7 +30,8 @@ BEGIN
     END IF;
 
     FOREACH protected_table IN ARRAY ARRAY[
-        'public.alembic_version', 'public.normalized_records', 'public.dataset_revisions',
+        'public.alembic_version', 'public.normalized_records', 'public.datasets',
+        'public.dataset_revisions',
         'public.scheme_search_index', 'public.scheme_search_values', 'public.ingestion_runs',
         'public.import_checkpoints'
     ] LOOP
@@ -44,7 +45,8 @@ END
 $check$;
 
 GRANT USAGE ON SCHEMA public TO bharatos_web;
-GRANT SELECT ON public.normalized_records, public.dataset_revisions, public.scheme_search_index,
+GRANT SELECT ON public.normalized_records, public.datasets, public.dataset_revisions,
+    public.scheme_search_index,
     public.scheme_search_values, public.ingestion_runs TO bharatos_web;
 
 -- Registration, session creation/logout, key creation/rotation and usage recording.
