@@ -28,6 +28,15 @@ from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
+from app.api_contracts import (
+    AdminOverviewResponse,
+    DeveloperKeysResponse,
+    DeveloperLoginResponse,
+    DeveloperUsageResponse,
+    IssuedKeyResponse,
+    MessageResponse,
+    SourceChecksResponse,
+)
 from app.cache import cache_metrics, cached_records
 from app.credentials import new_token, password_hash, token_hash, verify_password
 from app.data import (
@@ -347,7 +356,26 @@ def require_demo_key(request: Request, x_api_key: str | None = Depends(api_key_s
 
 class DeveloperCredentials(BaseModel):
     email: str = Field(min_length=3, max_length=254)
-    password: str = Field(min_length=12, max_length=128)
+    password: str = Field(min_length=12, max_length=128, json_schema_extra={"writeOnly": True})
+
+
+ACCOUNT_ERRORS = {
+    401: {"model": ErrorEnvelope, "description": "Missing, invalid, or expired developer session"},
+    503: {"model": ErrorEnvelope, "description": "Developer account service unavailable"},
+}
+REGISTRATION_LOGIN_ERRORS = {
+    429: {
+        "model": ErrorEnvelope,
+        "description": "Too many attempts",
+        "headers": {"Retry-After": {"schema": {"type": "integer"}, "description": "Seconds"}},
+    },
+    503: {"model": ErrorEnvelope, "description": "Developer account or quota service unavailable"},
+}
+ADMIN_ERRORS = {
+    401: {"model": ErrorEnvelope, "description": "Missing or invalid administrator token"},
+    503: {"model": ErrorEnvelope, "description": "Administrator monitoring unavailable"},
+}
+KEY_NOT_FOUND = {"model": ErrorEnvelope, "description": "API key not found for this account"}
 
 
 def enforce_auth_limit(request: Request) -> None:
@@ -399,8 +427,13 @@ def account_session(
 @app.post(
     "/api/v1/developers/register",
     status_code=201,
+    response_model=MessageResponse,
     tags=["Developer access"],
     dependencies=[Depends(enforce_auth_limit)],
+    responses={
+        **REGISTRATION_LOGIN_ERRORS,
+        409: {"model": ErrorEnvelope, "description": "An account with this email already exists"},
+    },
 )
 def register_developer(credentials: DeveloperCredentials) -> dict:
     if engine is None:
@@ -422,8 +455,13 @@ def register_developer(credentials: DeveloperCredentials) -> dict:
 
 @app.post(
     "/api/v1/developers/login",
+    response_model=DeveloperLoginResponse,
     tags=["Developer access"],
     dependencies=[Depends(enforce_auth_limit)],
+    responses={
+        **REGISTRATION_LOGIN_ERRORS,
+        401: {"model": ErrorEnvelope, "description": "Invalid email or password"},
+    },
 )
 def login_developer(credentials: DeveloperCredentials) -> dict:
     if engine is None:
@@ -445,7 +483,12 @@ def login_developer(credentials: DeveloperCredentials) -> dict:
     return {"session_token": token, "expires_at": expiry.isoformat()}
 
 
-@app.post("/api/v1/developers/logout", tags=["Developer access"])
+@app.post(
+    "/api/v1/developers/logout",
+    response_model=MessageResponse,
+    tags=["Developer access"],
+    responses=ACCOUNT_ERRORS,
+)
 def logout_developer(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(session_scheme)],
     account_id: int = Depends(account_session),
@@ -458,7 +501,13 @@ def logout_developer(
     return {"message": "Signed out."}
 
 
-@app.post("/api/v1/developers/keys", status_code=201, tags=["Developer access"])
+@app.post(
+    "/api/v1/developers/keys",
+    status_code=201,
+    response_model=IssuedKeyResponse,
+    tags=["Developer access"],
+    responses=ACCOUNT_ERRORS,
+)
 def create_developer_key(account_id: int = Depends(account_session)) -> dict:
     raw_key = new_token("bsk_")
     key_id = uuid4().hex
@@ -476,7 +525,12 @@ def create_developer_key(account_id: int = Depends(account_session)) -> dict:
     return {"id": key_id, "key": raw_key, "message": "Save this key; it will not be shown again."}
 
 
-@app.get("/api/v1/developers/keys", tags=["Developer access"])
+@app.get(
+    "/api/v1/developers/keys",
+    response_model=DeveloperKeysResponse,
+    tags=["Developer access"],
+    responses=ACCOUNT_ERRORS,
+)
 def list_developer_keys(account_id: int = Depends(account_session)) -> dict:
     with Session(engine) as session:
         keys = session.scalars(select(ApiKey).where(ApiKey.account_id == account_id)).all()
@@ -488,7 +542,12 @@ def list_developer_keys(account_id: int = Depends(account_session)) -> dict:
         }
 
 
-@app.get("/api/v1/developers/usage", tags=["Developer access"])
+@app.get(
+    "/api/v1/developers/usage",
+    response_model=DeveloperUsageResponse,
+    tags=["Developer access"],
+    responses=ACCOUNT_ERRORS,
+)
 def developer_usage(account_id: int = Depends(account_session)) -> dict:
     now = datetime.now(UTC)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -526,7 +585,13 @@ def require_admin(token: Annotated[str | None, Depends(admin_scheme)]) -> None:
         raise ApiProblem(401, "INVALID_ADMIN_TOKEN", "A valid administrator token is required.")
 
 
-@app.get("/api/v1/admin/overview", tags=["Administration"], dependencies=[Depends(require_admin)])
+@app.get(
+    "/api/v1/admin/overview",
+    response_model=AdminOverviewResponse,
+    tags=["Administration"],
+    dependencies=[Depends(require_admin)],
+    responses=ADMIN_ERRORS,
+)
 def admin_data() -> dict:
     with Session(engine) as session:
         counts = session.execute(
@@ -577,7 +642,11 @@ def admin_data() -> dict:
 
 
 @app.post(
-    "/api/v1/admin/source-checks", tags=["Administration"], dependencies=[Depends(require_admin)]
+    "/api/v1/admin/source-checks",
+    response_model=SourceChecksResponse,
+    tags=["Administration"],
+    dependencies=[Depends(require_admin)],
+    responses=ADMIN_ERRORS,
 )
 def check_official_sources() -> dict:
     with Session(engine) as session:
@@ -587,7 +656,12 @@ def check_official_sources() -> dict:
     return {"source_checks": probes}
 
 
-@app.delete("/api/v1/developers/keys/{key_id}", tags=["Developer access"])
+@app.delete(
+    "/api/v1/developers/keys/{key_id}",
+    response_model=MessageResponse,
+    tags=["Developer access"],
+    responses={**ACCOUNT_ERRORS, 404: KEY_NOT_FOUND},
+)
 def revoke_developer_key(key_id: str, account_id: int = Depends(account_session)) -> dict:
     with Session(engine) as session:
         key = session.get(ApiKey, key_id)
@@ -599,7 +673,17 @@ def revoke_developer_key(key_id: str, account_id: int = Depends(account_session)
     return {"message": "API key revoked."}
 
 
-@app.post("/api/v1/developers/keys/{key_id}/rotate", status_code=201, tags=["Developer access"])
+@app.post(
+    "/api/v1/developers/keys/{key_id}/rotate",
+    status_code=201,
+    response_model=IssuedKeyResponse,
+    tags=["Developer access"],
+    responses={
+        **ACCOUNT_ERRORS,
+        404: KEY_NOT_FOUND,
+        409: {"model": ErrorEnvelope, "description": "A revoked key cannot be rotated"},
+    },
+)
 def rotate_developer_key(key_id: str, account_id: int = Depends(account_session)) -> dict:
     raw_key = new_token("bsk_")
     replacement_id = uuid4().hex

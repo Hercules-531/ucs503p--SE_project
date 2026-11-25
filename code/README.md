@@ -445,8 +445,9 @@ limit). Pages are ordered by scheme ID; `meta.result_count` is the returned page
 `meta.total_count` is the number of matches before paging. The legacy unpaged response remains
 available when `limit` is omitted. As records change between calls, offset-based pages can shift.
 
-The generated OpenAPI JSON is at `/openapi.json`; the interactive reference is at `/reference`
-(its browser assets are loaded from a CDN). The project-specific documentation remains at `/docs`.
+`/openapi.json` documents request and response fields, authentication, and error codes for the
+civic data, developer account, and administrator APIs. `/reference` opens the interactive API
+reference and loads its browser assets from a CDN. `/docs` contains the project guide.
 
 For a PowerShell 7.2+ request, use the address printed by the launcher and the key from the developer
 console. `Read-Host` keeps the key value out of the entered command.

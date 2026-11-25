@@ -1,8 +1,8 @@
 # Functional requirement test coverage
 
-This matrix covers the prototype report's eight requirements and the four requirement groups
-in Section 3.2 of the course SRS. Their numbering differs. The names below are pytest node IDs,
-relative to the application directory.
+This matrix maps the prototype report's eight requirements and each mandatory behavior in
+Section 3.2 of the course SRS to automated tests. Sub-IDs identify individual bullets within
+the four SRS groups. The names below are pytest node IDs relative to the application directory.
 
 ## Prototype report
 
@@ -21,10 +21,29 @@ relative to the application directory.
 
 | ID | Behavior | Automated evidence |
 | --- | --- | --- |
-| FR-1 | Register and sign in through the portal. Associate keys and usage with the correct account. Exercise authentication without relying on a live civic dataset. | `tests/test_browser_workflows.py::test_developer_registers_runs_playground_and_revokes_key`, `tests/test_developer_access.py::test_developer_key_lifecycle`, `tests/test_developer_access.py::test_key_rotation_ownership_and_atomic_rollback` |
-| FR-2 | Protect versioned JSON endpoints, manage keys, record requests, enforce quotas and handle cache hits and misses. | `tests/test_developer_access.py::test_developer_key_lifecycle`, `tests/test_routes.py::test_api_requires_exact_demo_key`, `tests/test_routes.py::test_scheme_list_uses_standard_envelope_and_filters`, `tests/test_rate_limit.py::test_quota_is_per_key_and_rejection_has_retry_header`, `tests/test_cache.py::test_cache_hit_and_ingestion_invalidation`, `tests/test_service_integration.py::test_postgres_catalogue_is_cached_in_real_redis` |
-| FR-3 | Ingest through source-specific adapters. Validate before storage, normalize and deduplicate PIN data, preserve changed field values and provenance, and serve stored records from PostgreSQL. | `tests/test_pib_schemes.py::test_pib_snapshot_ingests_and_serves_historical_source`, `tests/test_ogd_pincode.py::test_csv_groups_offices_and_preserves_attribution`, `tests/test_ogd_pincode.py::test_malformed_row_fails_atomically`, `tests/test_service_integration.py::test_postgres_serves_a_canonical_pin_through_the_protected_api` |
-| FR-4 | Document available endpoints, parameters and errors through OpenAPI. Show account usage, error rate, ingestion status, and freshness problems. | `tests/test_routes.py::test_openapi_documents_distinct_security_schemes_and_errors`, `tests/test_developer_access.py::test_developer_key_lifecycle`, `tests/test_admin.py::test_admin_overview_requires_separate_token_and_reports_real_data`, `tests/test_admin.py::test_monitoring_reports_failed_import_without_exposing_error`, `tests/test_monitoring_quality.py::test_source_checks_report_missing_stale_and_invalid_times_without_claiming_outage` |
+| FR-1.1 | Register and sign in through the developer portal | `tests/test_browser_workflows.py::test_developer_registers_runs_playground_and_revokes_key` |
+| FR-1.2 | Associate key management and usage with the correct account | `tests/test_developer_access.py::test_developer_key_lifecycle`, `tests/test_developer_access.py::test_key_rotation_ownership_and_atomic_rollback` |
+| FR-1.3 | Exercise authentication with an empty civic catalogue | `tests/test_developer_access.py::test_developer_key_lifecycle` |
+| FR-2.1 | Generate and revoke API keys as an authenticated developer | `tests/test_browser_workflows.py::test_developer_registers_runs_playground_and_revokes_key` |
+| FR-2.2 | Validate a key before retrieving protected data | `tests/test_routes.py::test_api_requires_exact_demo_key` |
+| FR-2.3 | Expose schemes and locations through versioned REST endpoints | `tests/test_routes.py::test_scheme_detail_api_handles_success_and_missing_record`, `tests/test_routes.py::test_pincode_api_validates_shape_and_prototype_coverage` |
+| FR-2.4 | Return standard JSON success and error envelopes | `tests/test_routes.py::test_scheme_list_uses_standard_envelope_and_filters`, `tests/test_routes.py::test_invalid_api_request_uses_error_envelope_without_echoing_secrets` |
+| FR-2.5 | Apply rate limits independently per key | `tests/test_rate_limit.py::test_quota_is_per_key_and_rejection_has_retry_header` |
+| FR-2.6 | Use the cache on a hit and read the database on a miss | `tests/test_cache.py::test_cache_hit_and_ingestion_invalidation`, `tests/test_service_integration.py::test_postgres_catalogue_is_cached_in_real_redis` |
+| FR-2.7 | Log API request activity for usage reporting | `tests/test_developer_access.py::test_developer_key_lifecycle` |
+| FR-3.1 | Read datasets through source-specific adapters | `tests/test_pib_schemes.py::test_pib_snapshot_ingests_and_serves_historical_source`, `tests/test_ogd_pincode.py::test_csv_groups_offices_and_preserves_attribution` |
+| FR-3.2 | Parse and validate records before storage | `tests/test_ogd_pincode.py::test_malformed_row_fails_atomically`, `tests/test_ingestion.py::test_invalid_batch_does_not_overwrite_existing_records` |
+| FR-3.3 | Clean records and normalize them to the shared schema | `tests/test_ogd_pincode.py::test_csv_groups_offices_and_preserves_attribution` |
+| FR-3.4 | Preserve source values changed by normalization | `tests/test_ogd_pincode.py::test_csv_groups_offices_and_preserves_attribution` |
+| FR-3.5 | Identify and handle duplicate records | `tests/test_ogd_pincode.py::test_csv_groups_offices_and_preserves_attribution`, `tests/test_pib_schemes.py::test_pib_snapshot_and_default_catalogue_do_not_duplicate_svanidhi` |
+| FR-3.6 | Associate source and freshness metadata with records | `tests/test_ingestion.py::test_snapshot_ingestion_is_repeatable_and_attributed`, `tests/test_ingestion.py::test_failed_source_marks_only_its_records_for_review_and_recovers` |
+| FR-3.7 | Store processed records in PostgreSQL and retrieve them through the API | `tests/test_service_integration.py::test_postgres_serves_a_canonical_pin_through_the_protected_api` |
+| FR-3.8 | Provide an initial canonical dataset for PIN lookup | `tests/test_routes.py::test_pincode_api_validates_shape_and_prototype_coverage`, `tests/test_service_integration.py::test_postgres_serves_a_canonical_pin_through_the_protected_api` |
+| FR-4.1 | Document endpoints, parameters, response formats and errors | `tests/test_routes.py::test_openapi_documents_distinct_security_schemes_and_errors`, `tests/test_routes.py::test_openapi_documents_developer_and_admin_responses` |
+| FR-4.2 | Generate OpenAPI and make it available through Swagger UI | `tests/test_routes.py::test_openapi_documents_distinct_security_schemes_and_errors` |
+| FR-4.3 | Report requests today, success rate, latency and per-endpoint traffic | `tests/test_developer_access.py::test_developer_key_lifecycle` |
+| FR-4.4 | Show dataset status, API error rate and freshness to administrators | `tests/test_admin.py::test_admin_overview_requires_separate_token_and_reports_real_data`, `tests/test_admin.py::test_monitoring_reports_failed_import_without_exposing_error` |
+| FR-4.5 | Identify failed requests and data-source or freshness problems | `tests/test_admin.py::test_admin_overview_requires_separate_token_and_reports_real_data`, `tests/test_monitoring_quality.py::test_source_checks_report_missing_stale_and_invalid_times_without_claiming_outage`, `tests/test_browser_workflows.py::test_admin_shows_the_rejected_csv_line_without_source_values` |
 
 ## Run the tests
 

@@ -65,7 +65,9 @@ def test_developer_key_lifecycle(tmp_path, monkeypatch):
         assert created.status_code == 201
         key = created.json()["key"]
         key_id = created.json()["id"]
-        assert client.get("/api/v1/schemes", headers={"X-API-Key": key}).status_code == 200
+        empty_catalogue = client.get("/api/v1/schemes", headers={"X-API-Key": key})
+        assert empty_catalogue.status_code == 200
+        assert empty_catalogue.json()["data"] == []
         assert (
             client.get(
                 "/api/v1/schemes/not-found?private_query=secret", headers={"X-API-Key": key}
@@ -88,26 +90,30 @@ def test_developer_key_lifecycle(tmp_path, monkeypatch):
         assert usage["requests_today"] == 2
         assert usage["success_rate"] == 0.6667
         assert usage["average_duration_ms"] >= 0
-        assert {item["path"] for item in usage["endpoints"]} == {
-            "/api/v1/schemes",
-            "/api/v1/schemes/{scheme_id}",
+        assert {item["path"]: item["count"] for item in usage["endpoints"]} == {
+            "/api/v1/schemes": 2,
+            "/api/v1/schemes/{scheme_id}": 1,
         }
         assert "secret" not in str(usage)
         other = {"email": "other@example.org", "password": "another-secure-password"}
         assert client.post("/api/v1/developers/register", json=other).status_code == 201
         other_token = client.post("/api/v1/developers/login", json=other).json()["session_token"]
-        other_usage = client.get(
-            "/api/v1/developers/usage", headers={"Authorization": "Bearer " + other_token}
-        )
+        other_auth = {"Authorization": "Bearer " + other_token}
+        other_usage = client.get("/api/v1/developers/usage", headers=other_auth)
         assert other_usage.json()["total_requests"] == 0
         assert other_usage.json()["requests_today"] == 0
         assert other_usage.json()["success_rate"] is None
+        assert client.get("/api/v1/developers/keys", headers=other_auth).json() == {"keys": []}
+        assert (
+            client.delete(f"/api/v1/developers/keys/{key_id}", headers=other_auth).status_code
+            == 404
+        )
         assert (
             client.get("/api/v1/schemes", headers={"X-API-Key": web.DEMO_API_KEY}).status_code
             == 401
         )
         listing = client.get("/api/v1/developers/keys", headers=auth).json()
-        assert key not in str(listing)
+        assert listing == {"keys": [{"id": key_id, "prefix": key[:12], "revoked": False}]}
         assert client.delete(f"/api/v1/developers/keys/{key_id}", headers=auth).status_code == 200
         assert client.get("/api/v1/schemes", headers={"X-API-Key": key}).status_code == 401
         assert client.post("/api/v1/developers/logout", headers=auth).status_code == 200

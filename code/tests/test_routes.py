@@ -177,7 +177,88 @@ def test_openapi_documents_distinct_security_schemes_and_errors() -> None:
     )
     keys = spec["paths"]["/api/v1/developers/keys"]["get"]
     assert {"DeveloperSession": []} in keys["security"]
-    assert client.get("/reference").status_code == 200
+    reference = client.get("/reference")
+    assert reference.status_code == 200
+    assert "SwaggerUIBundle" in reference.text
+    assert "/openapi.json" in reference.text
+
+
+def test_openapi_documents_developer_and_admin_responses() -> None:
+    spec = client.get("/openapi.json").json()
+    schemas = spec["components"]["schemas"]
+    assert spec["components"]["securitySchemes"]["AdminToken"]["name"] == "X-Admin-Token"
+
+    expected = [
+        ("developers/register", "post", "201", {"message"}, None, {"409", "422", "429", "503"}),
+        (
+            "developers/login",
+            "post",
+            "200",
+            {"session_token", "expires_at"},
+            None,
+            {"401", "422", "429", "503"},
+        ),
+        ("developers/logout", "post", "200", {"message"}, "DeveloperSession", {"401", "503"}),
+        (
+            "developers/keys",
+            "post",
+            "201",
+            {"id", "key", "message"},
+            "DeveloperSession",
+            {"401", "503"},
+        ),
+        ("developers/keys", "get", "200", {"keys"}, "DeveloperSession", {"401", "503"}),
+        (
+            "developers/usage",
+            "get",
+            "200",
+            {"total_requests", "endpoints"},
+            "DeveloperSession",
+            {"401", "503"},
+        ),
+        (
+            "developers/keys/{key_id}",
+            "delete",
+            "200",
+            {"message"},
+            "DeveloperSession",
+            {"401", "404", "503"},
+        ),
+        (
+            "developers/keys/{key_id}/rotate",
+            "post",
+            "201",
+            {"id", "key", "message"},
+            "DeveloperSession",
+            {"401", "404", "409", "503"},
+        ),
+        (
+            "admin/overview",
+            "get",
+            "200",
+            {"recent_ingestion_runs", "sources", "cache", "alerts"},
+            "AdminToken",
+            {"401", "503"},
+        ),
+        ("admin/source-checks", "post", "200", {"source_checks"}, "AdminToken", {"401", "503"}),
+    ]
+    for path, method, success, fields, security, errors in expected:
+        operation = spec["paths"][f"/api/v1/{path}"][method]
+        assert operation.get("security", []) == ([{security: []}] if security else [])
+        responses = operation["responses"]
+        output_schema = responses[success]["content"]["application/json"]["schema"]["$ref"]
+        assert fields <= schemas[output_schema.rsplit("/", 1)[1]]["properties"].keys()
+        for status in errors:
+            assert (
+                responses[status]["content"]["application/json"]["schema"]["$ref"]
+                == "#/components/schemas/ErrorEnvelope"
+            )
+        if "429" in errors:
+            assert "Retry-After" in responses["429"]["headers"]
+
+    key_items = schemas["DeveloperKeysResponse"]["properties"]["keys"]["items"]["$ref"]
+    assert set(schemas[key_items.rsplit("/", 1)[1]]["properties"]) == {"id", "prefix", "revoked"}
+    assert schemas["DeveloperCredentials"]["properties"]["password"]["writeOnly"] is True
 
 
 def test_invalid_api_request_uses_error_envelope_without_echoing_secrets() -> None:
