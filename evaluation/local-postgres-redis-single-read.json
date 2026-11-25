@@ -1,0 +1,66 @@
+{
+  "measured_at_utc": "2026-11-08T10:37:41.703422+00:00",
+  "configuration": "Windows HTTP client; Docker single Uvicorn worker; PostgreSQL 17 and Redis 7; 8 scheme snapshots; warm cache; API rate limit 5000 per 60 seconds; single catalogue read",
+  "client_platform": "Windows-11-10.0.26300-SP0",
+  "python": "3.13.15",
+  "endpoint": "/api/v1/schemes",
+  "methodology": "One warm-up, then fixed request count at each concurrency; p95 includes failures.",
+  "results": [
+    {
+      "concurrency": 10,
+      "requests": 500,
+      "successful": 500,
+      "error_rate": 0.0,
+      "p50_ms": 28.31,
+      "p95_ms": 56.13,
+      "elapsed_seconds": 1.643,
+      "requests_per_second": 304.34,
+      "provenance_coverage": 1.0,
+      "status_counts": {
+        "200": 500
+      }
+    },
+    {
+      "concurrency": 50,
+      "requests": 500,
+      "successful": 500,
+      "error_rate": 0.0,
+      "p50_ms": 183.65,
+      "p95_ms": 754.48,
+      "elapsed_seconds": 2.703,
+      "requests_per_second": 184.95,
+      "provenance_coverage": 1.0,
+      "status_counts": {
+        "200": 500
+      }
+    },
+    {
+      "concurrency": 100,
+      "requests": 500,
+      "successful": 500,
+      "error_rate": 0.0,
+      "p50_ms": 562.66,
+      "p95_ms": 1975.55,
+      "elapsed_seconds": 3.995,
+      "requests_per_second": 125.16,
+      "provenance_coverage": 1.0,
+      "status_counts": {
+        "200": 500
+      }
+    },
+    {
+      "concurrency": 500,
+      "requests": 500,
+      "successful": 500,
+      "error_rate": 0.0,
+      "p50_ms": 1978.97,
+      "p95_ms": 3502.71,
+      "elapsed_seconds": 3.942,
+      "requests_per_second": 126.83,
+      "provenance_coverage": 1.0,
+      "status_counts": {
+        "200": 500
+      }
+    }
+  ]
+}
