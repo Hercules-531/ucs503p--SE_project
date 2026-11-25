@@ -1,5 +1,14 @@
 # Local prototype performance measurement
 
+## 25 November official archive import
+
+Two consecutive imports of the [May 2019 Department of Posts archive](../DATA_SOURCES.md#department-of-posts-may-2019-archive)
+into an isolated PostgreSQL 17 database each accepted 19,252 PINs. The database retained
+19,252 distinct location records after both runs. An authenticated request for `515631` returned
+15 offices, the official download URL, the file checksum, the archive date and `review_due`
+status. The response's `last_verified` remained empty because current details were unverified.
+The SQLite localhost launcher also imported all 19,252 PINs in a separate database.
+
 ## 23 November Compose evaluation
 
 The 23 November 2026 run used a Windows client and one Docker-hosted Uvicorn worker built from

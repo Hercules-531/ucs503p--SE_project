@@ -1,13 +1,14 @@
 # BharatOS phased roadmap
 
-## Status as of 23 November 2026
+## Status as of 25 November 2026
 
 This roadmap describes the full target, not a claim that every item is complete. Phase 1 is
 implemented. Database models, migrations, curated snapshot imports, optional PostgreSQL/Redis,
 developer access, local monitoring, one checked-file scheduler, local HTTPS and backup tooling
 have been added in later phases. Structured database search indexes are in place; free-text
-substring search still uses SQL `LIKE`. The full official PIN dataset has not been imported, and the PIB
-scheme adapter is a dated subset rather than a live feed. Wider source coverage, an external
+substring search still uses SQL `LIKE`. The official May 2019 PIN archive is available for
+historical use. The current monthly PIN dataset and a live PIB feed remain unavailable. Wider
+source coverage, an external
 developer pilot, production security review and deployment remain incomplete. Local test and
 measurement evidence is in [evaluation](evaluation/README.md).
 
@@ -28,9 +29,10 @@ lists the publications and dates. These additions expand sector coverage with da
 The packaged PostgreSQL importer was run twice and retained five records across the four sources.
 The full PostgreSQL and Redis test run passed 149 tests with the expanded seed.
 
-A third-party 2024 PIN-directory mirror was later tested with 19,300 PINs in isolated databases.
-Its origin and current accuracy have not been independently verified against the official file;
-it does not satisfy the verified official-directory exit criterion.
+A third-party 2024 PIN-directory mirror was tested with 19,300 PINs in isolated databases. Its
+origin and current accuracy have not been independently verified against the monthly official file.
+Use the [source register](DATA_SOURCES.md#department-of-posts-may-2019-archive) for the separately
+verified official historical download and its date.
 
 ## Phase 1 — Interactive prototype and software design
 

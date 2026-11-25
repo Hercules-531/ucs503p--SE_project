@@ -54,3 +54,8 @@ jobs:
           docker run --rm bharatos-ci python -m scripts.ingest_pib_environment --help
           docker run --rm bharatos-ci python -m scripts.ingest_pib_programmes --help
           docker run --rm bharatos-ci python -m scripts.schedule_source_checks --help
+      - name: Verify local HTTPS and restricted database access
+        timeout-minutes: 8
+        run: uv run pytest -q tests/test_compose_deployment.py
+        env:
+          RUN_COMPOSE_TESTS: "1"

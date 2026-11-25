@@ -15,6 +15,7 @@ from sqlalchemy import URL
 from sqlalchemy.orm import Session
 
 from app.ingestion import LocationSnapshotAdapter, SchemeSnapshotAdapter, ingest
+from app.ogd_pincode import OgdPincode2019ArchiveAdapter
 from app.pib_environment import PibEnvironmentSnapshotAdapter
 from app.pib_programmes import PROGRAMME_SNAPSHOTS
 from app.pib_schemes import PibSchemeSnapshotAdapter
@@ -66,12 +67,18 @@ def require_current_schema(path: Path, config: Config) -> None:
         raise ValueError("Existing database is missing required tables; it was not changed.")
 
 
-def initialize_database(path: Path, mirror_path: Path | None = None) -> tuple[bool, list[str]]:
+def initialize_database(
+    path: Path, mirror_path: Path | None = None, *, official_archive_path: Path | None = None
+) -> tuple[bool, list[str]]:
     """Build a new database in a temporary file and publish it only after all imports succeed."""
+    if mirror_path is not None and official_archive_path is not None:
+        raise ValueError("Select either the official archive or the third-party mirror")
     path = path.resolve()
     config = Config(str(ROOT / "alembic.ini"))
     if path.exists():
         require_current_schema(path, config)
+        if official_archive_path is not None:
+            raise ValueError("Use a new database path to initialize from the official archive")
         return False, []
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -87,9 +94,14 @@ def initialize_database(path: Path, mirror_path: Path | None = None) -> tuple[bo
         engine = create_database(sqlite_url(temporary))
         try:
             with Session(engine) as session:
+                locations = (
+                    OgdPincode2019ArchiveAdapter(official_archive_path)
+                    if official_archive_path is not None
+                    else LocationSnapshotAdapter()
+                )
                 adapters = [
                     SchemeSnapshotAdapter(),
-                    LocationSnapshotAdapter(),
+                    locations,
                     PibSchemeSnapshotAdapter(),
                     PibTransportSnapshotAdapter(),
                     PibEnvironmentSnapshotAdapter(),
@@ -118,7 +130,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--port", type=int, default=None)
-    parser.add_argument("--skip-mirror", action="store_true")
+    pin_sources = parser.add_mutually_exclusive_group()
+    pin_sources.add_argument("--skip-mirror", action="store_true")
+    pin_sources.add_argument(
+        "--official-archive",
+        type=Path,
+        metavar="CSV",
+        help="Seed a new database from the 2019 OGD archive",
+    )
     args = parser.parse_args()
     if args.port is not None and not 1 <= args.port <= 65535:
         parser.error("Port must be between 1 and 65535")
@@ -126,16 +145,19 @@ def main() -> None:
         port = args.port if args.port is not None else find_available_port()
     except ValueError as exc:
         parser.exit(1, f"Local startup failed: {exc}\n")
-    mirror = DEFAULT_MIRROR if not args.skip_mirror and DEFAULT_MIRROR.is_file() else None
+    use_mirror = not args.skip_mirror and args.official_archive is None and DEFAULT_MIRROR.is_file()
+    mirror = DEFAULT_MIRROR if use_mirror else None
     try:
-        created, report = initialize_database(args.db, mirror)
+        created, report = initialize_database(
+            args.db, mirror, official_archive_path=args.official_archive
+        )
     except (OSError, ValueError) as exc:
         parser.exit(1, f"Local startup failed: {exc}\n")
     for item in report:
         print(item, flush=True)
     if not created:
         print("Using the existing database without reimporting records.", flush=True)
-    elif mirror is None:
+    elif mirror is None and args.official_archive is None:
         print(
             "Historical PIN mirror not imported; the three sample PINs remain available.",
             flush=True,

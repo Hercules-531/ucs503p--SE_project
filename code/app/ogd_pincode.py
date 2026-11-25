@@ -15,6 +15,11 @@ from app.models import LocationRecord
 
 SOURCE_URL = "https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month"
 LICENSE_URL = "https://data.gov.in/Godl"
+ARCHIVE_2019_URL = (
+    "https://www.data.gov.in/sites/default/files/dataurl31052019/Pincode_30052019.csv"
+)
+ARCHIVE_2019_SHA256 = "e2fc773ebc697bb5aa96b76b6a38a2289d450e896769550259df89a2afe54c90"
+ARCHIVE_2019_DATE = date(2019, 5, 30)
 MAX_SNAPSHOT_BYTES = 100 * 1024 * 1024
 
 
@@ -32,6 +37,7 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
     model = LocationRecord
     id_field = "pincode"
     complete_snapshot = True
+    encoding = "utf-8-sig"
 
     def __init__(self, path: Path, verified_on: date, *, expected_sha256: str | None = None):
         if verified_on > datetime.now(UTC).date():
@@ -51,10 +57,19 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
             raise ImportRejected(
                 "SNAPSHOT_CHECKSUM_MISMATCH", "Snapshot checksum does not match the approved digest"
             )
-        with io.StringIO(data.decode("utf-8-sig"), newline="") as file:
+        with io.StringIO(data.decode(self.encoding), newline="") as file:
             for record in self.collect_file(file):
                 record["source"]["snapshot_sha256"] = digest
                 yield record
+
+    def source_metadata(self) -> dict[str, Any]:
+        return {
+            "name": "Department of Posts, Government of India — OGD Platform",
+            "url": SOURCE_URL,
+            "last_verified": self.verified_on.isoformat(),
+            "license_name": "Government Open Data License - India",
+            "license_url": LICENSE_URL,
+        }
 
     def collect_file(self, file: TextIO) -> Iterable[dict[str, Any]]:
         grouped: dict[str, dict[tuple[str, str, str], dict[str, set[str]]]] = defaultdict(dict)
@@ -111,11 +126,30 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
                 "pincode": pincode,
                 **offices[0],
                 "offices": offices,
-                "source": {
-                    "name": "Department of Posts, Government of India — OGD Platform",
-                    "url": SOURCE_URL,
-                    "last_verified": self.verified_on.isoformat(),
-                    "license_name": "Government Open Data License - India",
-                    "license_url": LICENSE_URL,
-                },
+                "source": self.source_metadata(),
             }
+
+
+class OgdPincode2019ArchiveAdapter(OgdPincodeCsvAdapter):
+    """Match the known government archive bytes and serve them with historical provenance."""
+
+    name = "ogd-department-of-posts-pincode-archive-2019"
+    preserve_other_sources = True
+    encoding = "cp1252"  # The pinned CSV uses byte 0xa0 for nonbreaking spaces.
+
+    def __init__(self, path: Path):
+        super().__init__(path, ARCHIVE_2019_DATE, expected_sha256=ARCHIVE_2019_SHA256)
+
+    def source_metadata(self) -> dict[str, Any]:
+        return {
+            **super().source_metadata(),
+            "name": (
+                "Department of Posts, All India Pincode Directory, Open Government Data "
+                "Platform India (2019)"
+            ),
+            "url": ARCHIVE_2019_URL,
+            "snapshot_date": ARCHIVE_2019_DATE.isoformat(),
+            "last_verified": None,
+            "review_reason": "historical_snapshot",
+            "verification_note": "May 2019 archive. Confirm current details with India Post.",
+        }

@@ -62,3 +62,18 @@ The test covered discovery, registration, sign-in, protected requests, usage, ke
 revocation, sign-out and admin overview. Source check inserts and updates succeeded.
 PostgreSQL rejected catalogue and migration writes, public schema creation and request-log
 deletion with insufficient-privilege errors.
+
+## Repeat the deployment check
+
+With Docker running, use the same HTTPS deployment test as the repository workflow.
+
+```powershell
+uv sync --frozen
+$env:RUN_COMPOSE_TESTS = '1'
+uv run pytest -q tests/test_compose_deployment.py
+```
+
+The test creates a fresh Compose project, applies migrations and grants, and runs the developer
+API flow over localhost HTTPS. It verifies the proxy certificate with the test project's CA,
+checks Redis cache hits and tests the database privileges of the web login. The containers,
+volumes and locally built images for this test project are removed when the test ends.

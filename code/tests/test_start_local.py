@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 import app.main as web
+import app.ogd_pincode as ogd
 import app.pincode_mirror as mirror
 from app.storage import IngestionRun, StoredRecord, create_database
 from scripts.start_local import find_available_port, initialize_database, sqlite_url
@@ -104,3 +105,50 @@ def test_new_local_database_can_include_checked_historical_mirror(tmp_path, monk
         assert imported.payload["source"]["provenance_kind"] == "third_party_mirror"
         assert imported.payload["source"]["last_verified"] is None
     engine.dispose()
+
+
+def test_new_database_serves_official_archive_with_historical_provenance(tmp_path, monkeypatch):
+    database = tmp_path / "archive.db"
+    source = tmp_path / "postal-archive.csv"
+    data = (
+        b"Office Name,Pincode,District,StateName\n"
+        b"Historic Office\xa0,147004,Patiala,Punjab\n"
+        b"Other Office,147004,Patiala,Punjab\n"
+    )
+    source.write_bytes(data)
+    monkeypatch.setattr(ogd, "ARCHIVE_2019_SHA256", hashlib.sha256(data).hexdigest())
+    assert initialize_database(database, official_archive_path=source)[0]
+    with pytest.raises(ValueError, match="new database path"):
+        initialize_database(database, official_archive_path=source)
+
+    engine = create_database(sqlite_url(database))
+    monkeypatch.setattr(web, "engine", engine)
+    with Session(engine) as session:
+        stored = session.get(StoredRecord, ("location", "147004"))
+        assert stored.source_adapter == ogd.OgdPincode2019ArchiveAdapter.name
+        assert stored.payload["offices"][0]["original_values"] == {
+            "officename": ["Historic Office\u00a0"]
+        }
+        metadata = stored.payload["source"]
+        assert metadata["snapshot_date"] == "2019-05-30"
+        assert metadata["last_verified"] is None
+        assert metadata["freshness_status"] == "review_due"
+        assert metadata["snapshot_sha256"] == hashlib.sha256(data).hexdigest()
+    with TestClient(web.app) as client:
+        result = client.get("/locations", params={"pincode": "147004"})
+        assert result.status_code == 200
+        assert "Historic Office" in result.text and "Other Office" in result.text
+        assert "Review needed" in result.text
+        assert "30 May 2019" in result.text
+        assert ogd.ARCHIVE_2019_URL in result.text
+        assert "Government Open Data License - India" in result.text
+    engine.dispose()
+
+
+def test_archive_checksum_failure_leaves_no_local_database(tmp_path):
+    database = tmp_path / "archive.db"
+    source = tmp_path / "wrong.csv"
+    source.write_text("This is a different snapshot", encoding="utf-8")
+    with pytest.raises(ValueError, match="checksum"):
+        initialize_database(database, official_archive_path=source)
+    assert not database.exists()

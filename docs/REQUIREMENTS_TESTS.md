@@ -38,7 +38,7 @@ the four SRS groups. The names below are pytest node IDs relative to the applica
 | FR-3.5 | Identify and handle duplicate records | `tests/test_ogd_pincode.py::test_csv_groups_offices_and_preserves_attribution`, `tests/test_pib_schemes.py::test_pib_snapshot_and_default_catalogue_do_not_duplicate_svanidhi` |
 | FR-3.6 | Associate source and freshness metadata with records | `tests/test_ingestion.py::test_snapshot_ingestion_is_repeatable_and_attributed`, `tests/test_ingestion.py::test_failed_source_marks_only_its_records_for_review_and_recovers` |
 | FR-3.7 | Store processed records in PostgreSQL and retrieve them through the API | `tests/test_service_integration.py::test_postgres_serves_a_canonical_pin_through_the_protected_api` |
-| FR-3.8 | Provide an initial canonical dataset for PIN lookup | `tests/test_routes.py::test_pincode_api_validates_shape_and_prototype_coverage`, `tests/test_service_integration.py::test_postgres_serves_a_canonical_pin_through_the_protected_api` |
+| FR-3.8 | Provide an initial canonical dataset for PIN lookup | `tests/test_routes.py::test_pincode_api_validates_shape_and_prototype_coverage`, `tests/test_service_integration.py::test_postgres_serves_a_canonical_pin_through_the_protected_api`, `tests/test_start_local.py::test_new_database_serves_official_archive_with_historical_provenance`, `tests/test_start_local.py::test_archive_checksum_failure_leaves_no_local_database` |
 | FR-4.1 | Document endpoints, parameters, response formats and errors | `tests/test_routes.py::test_openapi_documents_distinct_security_schemes_and_errors`, `tests/test_routes.py::test_openapi_documents_developer_and_admin_responses` |
 | FR-4.2 | Generate OpenAPI and make it available through Swagger UI | `tests/test_routes.py::test_openapi_documents_distinct_security_schemes_and_errors` |
 | FR-4.3 | Report requests today, success rate, latency and per-endpoint traffic | `tests/test_developer_access.py::test_developer_key_lifecycle` |
@@ -48,7 +48,9 @@ the four SRS groups. The names below are pytest node IDs relative to the applica
 ## Run the tests
 
 The application workflow installs headless Chromium and runs the browser and PostgreSQL/Redis
-tests alongside the default suite. Locally, to enable the browser test:
+tests alongside the default suite. It also runs
+`tests/test_compose_deployment.py::test_compose_https_with_restricted_database_role` against the
+localhost HTTPS profile. Locally, to enable the browser test:
 
 ```powershell
 uv sync --frozen
@@ -57,6 +59,7 @@ $env:RUN_BROWSER_TESTS = "1"
 .venv\Scripts\python.exe -m pytest tests/test_browser_workflows.py -q
 ```
 
-The official PIN CSV adapter tests use fixtures, and the PostgreSQL API test uses a seeded
-canonical PIN. A verified full official directory import and the volunteer evaluation remain
-separate project milestones.
+The automated PIN CSV tests use fixtures, and the PostgreSQL API test uses a seeded canonical
+PIN. The [source register](DATA_SOURCES.md#department-of-posts-may-2019-archive) records the
+separate official archive verification. The current monthly directory import and volunteer
+evaluation remain open.

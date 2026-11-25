@@ -179,8 +179,8 @@ For PostgreSQL, set `DATABASE_URL` to a `postgresql+psycopg://` connection URL b
 the import and server. The import is repeatable, validates the complete batch before committing,
 uses bounded database lookup batches, and records successful and failed runs. These are curated
 snapshots, not a live government feed; the stored verification date remains the original date.
-Alembic migrations and initial source adapters are implemented; full official dataset ingestion
-and broader source coverage remain under development.
+The May 2019 official PIN archive is available for historical lookups. Importing the current
+monthly directory requires a separate, verified download.
 
 Before importing into a new database, run `.venv\Scripts\python.exe -m alembic upgrade head`.
 If you created a database with the earlier `create_all` version, back it up, verify that its
@@ -211,6 +211,26 @@ After signing in, the page shows recorded request counts by route and average du
 readiness indicator checks configured application dependencies, not government source availability.
 
 ### Import a PIN directory CSV
+
+For a historical demo, save the [Department of Posts May 2019 archive](https://www.data.gov.in/sites/default/files/dataurl31052019/Pincode_30052019.csv)
+as `data/raw/Pincode_30052019.csv`. Start a fresh local database using that file.
+
+```powershell
+.venv\Scripts\python.exe -m scripts.start_local --db data\bharatos-official-2019.db --official-archive data\raw\Pincode_30052019.csv
+```
+
+The launcher checks the exact file checksum and uses the archive for PIN lookup. Results show
+the snapshot date and **Review needed**. To load it into a fresh migrated PostgreSQL database,
+set `DATABASE_URL` as above, use `scripts.ingest_snapshots --schemes-only`, and run:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.ingest_ogd_pincode data\raw\Pincode_30052019.csv --archive-2019
+```
+
+The manual archive import preserves PINs already owned by other sources. Seed only schemes in
+the target database if you want the archive to supply every PIN.
+
+#### Current monthly directory
 
 Download the PIN directory CSV from its [official OGD resource page](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month),
 verify its origin and licence, and import it into a migrated database:

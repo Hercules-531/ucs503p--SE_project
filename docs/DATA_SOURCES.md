@@ -51,11 +51,27 @@ downloaded, independently verified CSV remains an alternative for the existing a
 On 23 November 2026, the [OGD resource listing](https://data.gov.in/resource/all-india-pincode-directory-till-last-month)
 identified the resource UUID as `5c2f62fe-5afa-4119-a499-fec9d604d5bd`. The listed public CSV link
 returned HTTP 403 again. The [IndiaAI AIKosh listing](https://aikosh.indiaai.gov.in/home/datasets/details/all_india_pincode_directory_till_last_month_1.html)
-points to that same OGD resource. A full official file remains unavailable in this environment.
+points to that same OGD resource. A full current monthly file remains unavailable in this environment.
 The PIN adapters now store the SHA-256 of each newly imported file with the record provenance.
 The manual official importer can match it against an operator-reviewed digest.
 When trimming changes a PIN, office, district or state value, the office keeps the original text
 under `original_values`. Equivalent office entries still share one normalized office record.
+
+### Department of Posts May 2019 archive
+
+On 25 November 2026, the official archive URL served a CSV with 155,599 rows and 19,252 distinct
+six-digit PINs. The [India Data Platform catalogue record](https://ndp.ckan.civicdatalab.in/dataset/all-india-pincode-directory)
+identifies the Department of Posts as the publisher, cites this official file, and lists the same
+16,431,380-byte size. The archive contains legacy geographic names. The importer uses the archive
+date for provenance and leaves the current verification date empty. Both the public page and the
+API indicate that the record requires review. The raw CSV remains in the ignored `data/raw/` folder.
+
+Department of Posts, 2019, All India Pincode Directory, Open Government Data Platform India,
+30/05. Published under the Government Open Data License - India. [Official CSV](https://www.data.gov.in/sites/default/files/dataurl31052019/Pincode_30052019.csv) · [Licence](https://www.meity.gov.in/static/uploads/2024/02/Gazette-Notification_OpenDataLicense_13.02.2017.pdf)
+
+The archive adapter checks SHA-256 `e2fc773ebc697bb5aa96b76b6a38a2289d450e896769550259df89a2afe54c90`
+and decodes the pinned bytes with Windows-1252 for six nonbreaking-space characters. It groups
+offices by PIN, collapses repeated office tuples, and retains original values changed by trimming.
 
 ### Historical third-party mirror
 

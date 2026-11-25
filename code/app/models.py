@@ -16,9 +16,10 @@ class SourceMetadata(BaseModel):
     original_source_url: HttpUrl | None = None
     verification_note: str | None = None
     freshness_status: Literal["current", "review_due", "unknown"] = "current"
-    review_reason: Literal["import_failed", "absent_from_snapshot", "unverified_mirror"] | None = (
-        None
-    )
+    review_reason: (
+        Literal["import_failed", "absent_from_snapshot", "unverified_mirror", "historical_snapshot"]
+        | None
+    ) = None
 
     @model_validator(mode="after")
     def mark_outdated(self):

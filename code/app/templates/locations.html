@@ -46,6 +46,7 @@
       {% if location.source.review_reason == 'unverified_mirror' %}<p>This historical third-party copy has not been compared with the current official directory.</p>{% elif location.source.review_reason == 'absent_from_snapshot' %}<p>This record was absent from the latest imported snapshot; verify with the source.</p>{% elif location.source.review_reason == 'import_failed' %}<p>The latest import failed; this earlier record is retained for review.</p>{% endif %}
       {% include "_source_check.html" %}
       <a class="button primary" href="{{ location.source.url }}" target="_blank" rel="noopener noreferrer">View listed source</a>
+      {% if location.source.license_name and location.source.license_url %}<p><a href="{{ location.source.license_url }}" target="_blank" rel="noopener noreferrer">{{ location.source.license_name }}</a></p>{% endif %}
       {% if location.source.original_source_url %}<p><a href="{{ location.source.original_source_url }}" target="_blank" rel="noopener noreferrer">Original source listed by mirror</a></p>{% endif %}
     </aside>
   </div>
