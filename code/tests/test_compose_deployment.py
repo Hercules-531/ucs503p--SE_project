@@ -113,6 +113,13 @@ def test_compose_https_with_restricted_database_role(compose_project):
     assert ready.json() == {"status": "ready", "checks": {"database": "ok", "redis": "ok"}}
     assert client.get("/schemes/pm-kisan").status_code == 200
 
+    portal = client.get("/developers")
+    assert portal.status_code == 200
+    assert 'href="/static/styles.css"' in portal.text
+    assert 'src="/static/app.js"' in portal.text
+    assert client.get("/static/styles.css").headers["content-type"].startswith("text/css")
+    assert client.get("/static/app.js").status_code == 200
+
     account = {"email": "compose-test@example.org", "password": token_hex(24)}
     assert client.post("/api/v1/developers/register", json=account).status_code == 201
     login = client.post("/api/v1/developers/login", json=account)
