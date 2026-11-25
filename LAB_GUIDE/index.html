@@ -1466,7 +1466,7 @@
 <p>This is the <strong>target</strong> runtime/time-ordered view for a protected API request. The gateway validates the key and checks quota before using a cache or the data service. The <code>alt</code> fragments show invalid-key, rate-limit, cache-hit and cache-miss paths. In the current database mode, key validation and the cache revision check still query the database on a cache hit; the cache avoids loading the full scheme catalogue, not every database access. PIN lookups use the database directly. Redis and limits are optional in local development.</p>
 <h3 id="activity-diagram">Activity Diagram</h3>
 <p><img alt="BharatOS activity diagram" src="../diagrams/rendered/activity.svg" /></p>
-<p>This is the <strong>target</strong> control-flow view of ingestion. It has an initial node and terminal paths for collection, validation, quarantine, deduplication and publication. Today, the importer validates the whole batch, deduplicates identical identifiers, rejects conflicting duplicates, rolls back invalid batches and marks affected prior records <code>review_due</code>. A persistent quarantine workflow and configurable batch-quality thresholds remain planned.</p>
+<p>This is the <strong>target</strong> control-flow view of ingestion. It has paths for collection, validation, quarantine, deduplication and publication. Today a failed batch publishes zero records. The last good data remains available with <code>review_due</code> status. Each failed run records a diagnostic code and the first offending record or CSV line when known. Keep the original snapshot for investigation. After correcting the adapter or obtaining a corrected snapshot, repeat the import. Configurable thresholds and selective release of quarantined records remain planned.</p>
 <h3 id="component-diagram">Component Diagram</h3>
 <p><img alt="BharatOS component diagram" src="../diagrams/rendered/component.svg" /></p>
 <p>This is the high-level architecture view. Browser experiences depend on the API gateway. The gateway delegates identity, canonical data access, cache/rate limits and logging. Ingestion is separate from live request serving, so a failed source refresh does not directly break the API. PostgreSQL owns durable normalized data, while Redis owns disposable cache and rate-limit state.</p>
@@ -1699,7 +1699,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 23, 2026 08:13:24 UTC">November 23, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 14:20:53 UTC">November 25, 2026</span>
   </span>
 
     
