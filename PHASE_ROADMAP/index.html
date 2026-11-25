@@ -382,10 +382,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#status-as-of-23-november-2026" class="md-nav__link">
+  <a href="#status-as-of-25-november-2026" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Status as of 23 November 2026
+        Status as of 25 November 2026
       
     </span>
   </a>
@@ -909,13 +909,14 @@
 
 
 <h1 id="bharatos-phased-roadmap">BharatOS phased roadmap</h1>
-<h2 id="status-as-of-23-november-2026">Status as of 23 November 2026</h2>
+<h2 id="status-as-of-25-november-2026">Status as of 25 November 2026</h2>
 <p>This roadmap describes the full target, not a claim that every item is complete. Phase 1 is
 implemented. Database models, migrations, curated snapshot imports, optional PostgreSQL/Redis,
 developer access, local monitoring, one checked-file scheduler, local HTTPS and backup tooling
 have been added in later phases. Structured database search indexes are in place; free-text
-substring search still uses SQL <code>LIKE</code>. The full official PIN dataset has not been imported, and the PIB
-scheme adapter is a dated subset rather than a live feed. Wider source coverage, an external
+substring search still uses SQL <code>LIKE</code>. The official May 2019 PIN archive is available for
+historical use. The current monthly PIN dataset and a live PIB feed remain unavailable. Wider
+source coverage, an external
 developer pilot, production security review and deployment remain incomplete. Local test and
 measurement evidence is in <a href="../evaluation/">evaluation</a>.</p>
 <p>Compose can use a <a href="https://github.com/Hercules-531/ucs503p--SE_project/blob/master/code/deploy/README.md">restricted PostgreSQL web login</a>. Schema migrations,
@@ -932,9 +933,10 @@ through the existing scheme schema and ingestion pipeline. The <a href="../DATA_
 lists the publications and dates. These additions expand sector coverage with dated snapshots.
 The packaged PostgreSQL importer was run twice and retained five records across the four sources.
 The full PostgreSQL and Redis test run passed 149 tests with the expanded seed.</p>
-<p>A third-party 2024 PIN-directory mirror was later tested with 19,300 PINs in isolated databases.
-Its origin and current accuracy have not been independently verified against the official file;
-it does not satisfy the verified official-directory exit criterion.</p>
+<p>A third-party 2024 PIN-directory mirror was tested with 19,300 PINs in isolated databases. Its
+origin and current accuracy have not been independently verified against the monthly official file.
+Use the <a href="../DATA_SOURCES/#department-of-posts-may-2019-archive">source register</a> for the separately
+verified official historical download and its date.</p>
 <h2 id="phase-1-interactive-prototype-and-software-design">Phase 1 — Interactive prototype and software design</h2>
 <p><strong>Purpose:</strong> make the system understandable, demonstrable and testable before infrastructure work begins.</p>
 <p>Delivered in this repository:</p>
@@ -1015,7 +1017,7 @@ it does not satisfy the verified official-directory exit criterion.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 00:36:31 UTC">November 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 14:49:00 UTC">November 25, 2026</span>
   </span>
 
     

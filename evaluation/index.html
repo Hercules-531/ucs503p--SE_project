@@ -787,6 +787,13 @@
 
 
 <h1 id="local-prototype-performance-measurement">Local prototype performance measurement</h1>
+<h2 id="25-november-official-archive-import">25 November official archive import</h2>
+<p>Two consecutive imports of the <a href="../DATA_SOURCES/#department-of-posts-may-2019-archive">May 2019 Department of Posts archive</a>
+into an isolated PostgreSQL 17 database each accepted 19,252 PINs. The database retained
+19,252 distinct location records after both runs. An authenticated request for <code>515631</code> returned
+15 offices, the official download URL, the file checksum, the archive date and <code>review_due</code>
+status. The response's <code>last_verified</code> remained empty because current details were unverified.
+The SQLite localhost launcher also imported all 19,252 PINs in a separate database.</p>
 <h2 id="23-november-compose-evaluation">23 November Compose evaluation</h2>
 <p>The 23 November 2026 run used a Windows client and one Docker-hosted Uvicorn worker built from
 <code>986aa17</code>, with PostgreSQL 17 and Redis 7. The isolated database contained 24 schemes from the
@@ -1056,7 +1063,7 @@ the configuration and client/server environment.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 23, 2026 08:13:24 UTC">November 23, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 14:49:00 UTC">November 25, 2026</span>
   </span>
 
     
