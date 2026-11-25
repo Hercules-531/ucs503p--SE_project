@@ -11,7 +11,7 @@ scheme adapter is a dated subset rather than a live feed. Wider source coverage,
 developer pilot, production security review and deployment remain incomplete. Local test and
 measurement evidence is in [evaluation](evaluation/README.md).
 
-Compose can use a [restricted PostgreSQL web login](../code/deploy/README.md). Schema migrations,
+Compose can use a [restricted PostgreSQL web login](https://github.com/Hercules-531/ucs503p--SE_project/blob/master/code/deploy/README.md). Schema migrations,
 ingestion and database backups still run under their existing operator connections.
 
 The current local stack was evaluated with 24 scheme records, 19,300 PIN records and both

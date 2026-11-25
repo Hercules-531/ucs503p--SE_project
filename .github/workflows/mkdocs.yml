@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]
@@ -43,4 +45,7 @@ jobs:
           mkdocs-git-committers-plugin-2                \
           mkdocs-git-authors-plugin                     \
           pymdown-extensions
-      - run: PYTHONPATH=src:$PYTHONPATH mkdocs gh-deploy --force
+      - name: Publish course documentation
+        run: |
+          mkdir -p journals
+          PYTHONPATH=src:$PYTHONPATH mkdocs gh-deploy --force
