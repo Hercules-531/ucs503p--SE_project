@@ -33,6 +33,7 @@ def test_slug_migration_backfills_existing_data_and_enforces_uniqueness(tmp_path
 
     # Reflect the old index without using the new ORM model before migration.
     old_index = Table("scheme_search_index", MetaData(), autoload_with=engine)
+    old_runs = Table("ingestion_runs", MetaData(), autoload_with=engine)
     old_records = Table(
         "normalized_records",
         MetaData(),
@@ -63,9 +64,11 @@ def test_slug_migration_backfills_existing_data_and_enforces_uniqueness(tmp_path
                 searchable="fixture",
             )
         )
-    with Session(engine) as session:
-        session.add(IngestionRun(source="first-run-failed", started_at=utc_now(), status="failed"))
-        session.commit()
+        connection.execute(
+            old_runs.insert().values(
+                source="first-run-failed", started_at=utc_now(), status="failed", accepted=0
+            )
+        )
     command.upgrade(config, "head")
     with Session(engine) as session:
         assert session.scalar(select(SchemeIndex.slug)) == record["slug"]
@@ -73,6 +76,7 @@ def test_slug_migration_backfills_existing_data_and_enforces_uniqueness(tmp_path
         assert observed.record_kind == "scheme"
         assert observed.complete_snapshot is None
         assert session.get(Dataset, "first-run-failed").record_kind is None
+        assert session.scalar(select(IngestionRun)).failure_code is None
         session.add(
             SchemeIndex(
                 identifier="conflict", slug=record["slug"], category_key="test", searchable="test"

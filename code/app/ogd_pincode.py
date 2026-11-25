@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, TextIO
 
-from app.ingestion import DataSourceAdapter
+from app.ingestion import DataSourceAdapter, ImportRejected
 from app.models import LocationRecord
 
 SOURCE_URL = "https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month"
@@ -22,7 +22,7 @@ def read_snapshot(path: Path) -> bytes:
     with path.open("rb") as file:
         data = file.read(MAX_SNAPSHOT_BYTES + 1)
     if len(data) > MAX_SNAPSHOT_BYTES:
-        raise ValueError("Snapshot exceeds the size limit")
+        raise ImportRejected("SNAPSHOT_TOO_LARGE", "Snapshot exceeds the size limit")
     return data
 
 
@@ -48,7 +48,9 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
     def collect_bytes(self, data: bytes) -> Iterable[dict[str, Any]]:
         digest = hashlib.sha256(data).hexdigest()
         if self.expected_sha256 is not None and digest != self.expected_sha256:
-            raise ValueError("Snapshot checksum does not match the approved digest")
+            raise ImportRejected(
+                "SNAPSHOT_CHECKSUM_MISMATCH", "Snapshot checksum does not match the approved digest"
+            )
         with io.StringIO(data.decode("utf-8-sig"), newline="") as file:
             for record in self.collect_file(file):
                 record["source"]["snapshot_sha256"] = digest
@@ -58,24 +60,39 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
         grouped: dict[str, dict[tuple[str, str, str], dict[str, set[str]]]] = defaultdict(dict)
         reader = csv.DictReader(file, strict=True)
         if reader.fieldnames is None:
-            raise ValueError("CSV has no header")
+            raise ImportRejected("INVALID_CSV_HEADER", "CSV has no header")
         headers = {}
         for header in reader.fieldnames:
             normalized = re.sub(r"[^a-z0-9]", "", header.casefold())
             if not normalized or normalized in headers:
-                raise ValueError("CSV contains blank or duplicate normalized column names")
+                raise ImportRejected(
+                    "INVALID_CSV_HEADER", "CSV contains blank or duplicate normalized column names"
+                )
             headers[normalized] = header
         required = ("officename", "pincode", "district", "statename")
         if not all(field in headers for field in required):
-            raise ValueError("CSV must contain officename, pincode, district and statename")
-        for line, row in enumerate(reader, start=2):
+            raise ImportRejected(
+                "INVALID_CSV_HEADER", "CSV must contain officename, pincode, district and statename"
+            )
+        for row in reader:
+            line = reader.line_num
             if None in row:
-                raise ValueError(f"Extra fields in CSV record at line {line}")
+                raise ImportRejected(
+                    "INVALID_CSV_ROW",
+                    f"Extra fields in CSV record at line {line}",
+                    position=line,
+                    position_kind="csv_line",
+                )
             original = [row.get(headers[field]) or "" for field in required]
             values = [value.strip() for value in original]
             office, pincode, district, state = values
             if not re.fullmatch(r"[0-9]{6}", pincode) or not all((office, district, state)):
-                raise ValueError(f"Invalid office record at CSV line {line}")
+                raise ImportRejected(
+                    "INVALID_CSV_ROW",
+                    f"Invalid office record at CSV line {line}",
+                    position=line,
+                    position_kind="csv_line",
+                )
             changed = grouped[pincode].setdefault((office, district, state), {})
             for field, raw, normalized in zip(required, original, values, strict=True):
                 if raw != normalized:

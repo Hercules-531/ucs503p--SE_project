@@ -545,7 +545,7 @@ def admin_data() -> dict:
         runs = session.scalars(
             select(IngestionRun).order_by(IngestionRun.id.desc()).limit(10)
         ).all()
-        # Error text can contain filesystem paths or source data; do not expose it here.
+        # Only structured diagnostics are safe to show for both legacy and current runs.
         recent_runs = [
             {
                 "source": run.source,
@@ -553,6 +553,9 @@ def admin_data() -> dict:
                 "accepted": run.accepted,
                 "started_at": run.started_at.isoformat(),
                 "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                "failure_code": run.failure_code,
+                "failure_position": run.failure_position,
+                "failure_position_kind": run.failure_position_kind,
             }
             for run in runs
         ]

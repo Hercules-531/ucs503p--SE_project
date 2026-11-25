@@ -2,11 +2,12 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ingestion import LocationSnapshotAdapter, ingest
 from app.ogd_pincode import OgdPincodeCsvAdapter
-from app.storage import Base, create_database, read_records
+from app.storage import Base, IngestionRun, create_database, read_records
 
 
 def test_csv_groups_offices_and_preserves_attribution(tmp_path):
@@ -59,6 +60,12 @@ def test_malformed_row_fails_atomically(tmp_path):
         with pytest.raises(ValueError, match="line 3"):
             ingest(session, OgdPincodeCsvAdapter(csv_path, datetime.now(UTC).date()))
         assert read_records(session, "location") == []
+        failed = session.scalar(select(IngestionRun))
+        assert (failed.failure_code, failed.failure_position_kind, failed.failure_position) == (
+            "INVALID_CSV_ROW",
+            "csv_line",
+            3,
+        )
     engine.dispose()
 
 

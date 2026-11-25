@@ -86,6 +86,9 @@ class IngestionRun(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     accepted: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(String(1000))
+    failure_code: Mapped[str | None] = mapped_column(String(40))
+    failure_position: Mapped[int | None] = mapped_column(Integer)
+    failure_position_kind: Mapped[str | None] = mapped_column(String(16))
 
 
 class SourceProbe(Base):

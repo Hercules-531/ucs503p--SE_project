@@ -8,20 +8,20 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ingestion import ingest
+from app.ingestion import ImportRejected, ingest
 from app.ogd_pincode import OgdPincodeCsvAdapter, read_snapshot
 from app.storage import ImportCheckpoint, IngestionRun, utc_now
 
 
 class CheckedSnapshotAdapter(OgdPincodeCsvAdapter):
-    def __init__(self, path: Path, verified_on: date, data: bytes | None, error: str | None):
+    def __init__(self, path: Path, verified_on: date, data: bytes | None, error: ValueError | None):
         super().__init__(path, verified_on)
         self.data = data
         self.error = error
 
     def collect(self):
         if self.error is not None:
-            raise ValueError(self.error)
+            raise self.error
         if self.data is None:
             raise ValueError("Snapshot file could not be read")
         yield from self.collect_bytes(self.data)
@@ -38,11 +38,13 @@ def run_checked_import(
     try:
         data = read_snapshot(path)
         if hashlib.sha256(data).hexdigest() != expected_sha256:
-            raise ValueError("Snapshot checksum does not match the approved digest")
+            raise ImportRejected(
+                "SNAPSHOT_CHECKSUM_MISMATCH", "Snapshot checksum does not match the approved digest"
+            )
     except OSError:
-        error = "Snapshot file could not be read"
+        error = ImportRejected("SOURCE_FILE_UNREADABLE", "Snapshot file could not be read")
     except ValueError as exc:
-        error = str(exc)
+        error = exc
 
     adapter = CheckedSnapshotAdapter(path, verified_on, data, error)
     checkpoint = session.get(ImportCheckpoint, adapter.name)

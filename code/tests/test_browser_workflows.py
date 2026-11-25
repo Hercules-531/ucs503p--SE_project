@@ -3,14 +3,18 @@
 import json
 import os
 import socket
+from datetime import UTC, datetime
 from threading import Thread
 from time import monotonic, sleep
 
 import pytest
 from playwright.sync_api import expect, sync_playwright
+from sqlalchemy.orm import Session
 from uvicorn import Config, Server
 
 import app.main as web
+from app.ingestion import ingest
+from app.ogd_pincode import OgdPincodeCsvAdapter
 from app.storage import create_database
 from scripts.start_local import initialize_database, sqlite_url
 
@@ -77,5 +81,32 @@ def test_developer_registers_runs_playground_and_revokes_key(developer_portal):
             assert json.loads(page.locator("#api-response").inner_text())["error"]["code"] == (
                 "INVALID_API_KEY"
             )
+        finally:
+            browser.close()
+
+
+def test_admin_shows_the_rejected_csv_line_without_source_values(
+    developer_portal, tmp_path, monkeypatch
+):
+    token = "disposable-browser-admin-token-for-tests"
+    monkeypatch.setattr(web, "ADMIN_TOKEN", token)
+    snapshot = tmp_path / "invalid.csv"
+    snapshot.write_text(
+        "officename,pincode,district,statename\nPrivate fixture,123,D,S\n", encoding="utf-8"
+    )
+    with Session(web.engine) as session:
+        with pytest.raises(ValueError, match="CSV line 2"):
+            ingest(session, OgdPincodeCsvAdapter(snapshot, datetime.now(UTC).date()))
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.goto(f"{developer_portal}/admin", wait_until="domcontentloaded")
+            page.get_by_label("Administrator token").fill(token)
+            page.get_by_role("button", name="Load monitoring").click()
+            runs = page.locator("#admin-runs")
+            expect(runs).to_contain_text("INVALID_CSV_ROW (CSV line 2)")
+            expect(runs).not_to_contain_text("Private fixture")
         finally:
             browser.close()

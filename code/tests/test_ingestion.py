@@ -67,6 +67,10 @@ def test_invalid_batch_does_not_overwrite_existing_records(tmp_path):
             assert current["source"]["review_reason"] == "import_failed"
         last_run = session.scalars(select(IngestionRun).order_by(IngestionRun.id.desc())).first()
         assert last_run.status == "failed"
+        assert last_run.failure_code == "INVALID_RECORD"
+        assert last_run.failure_position == 9
+        assert last_run.failure_position_kind == "record"
+        assert last_run.error is None
         assert len(session.scalars(select(StoredRecord)).all()) == 8
 
 

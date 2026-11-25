@@ -122,9 +122,20 @@ def test_monitoring_reports_failed_import_without_exposing_error(tmp_path, monke
         source = response.json()["sources"][0]
         assert source["last_import_status"] == "failed"
         assert source["review_due"] == 8
+        run = response.json()["recent_ingestion_runs"][0]
+        assert run["failure_code"] == "SOURCE_READ_FAILED"
+        assert run["failure_position"] is None
         assert "IMPORT_FAILED" in {alert["code"] for alert in response.json()["alerts"]}
         assert "REVIEW_DUE" in {alert["code"] for alert in response.json()["alerts"]}
         assert "private local file path" not in response.text
+        with Session(engine) as session:
+            ingest(session, SchemeSnapshotAdapter())
+        retry = client.get("/api/v1/admin/overview", headers={"X-Admin-Token": "a" * 32})
+        assert retry.status_code == 200
+        recovered = retry.json()["recent_ingestion_runs"]
+        assert recovered[0]["status"] == "success"
+        assert recovered[0]["failure_code"] is None
+        assert recovered[1]["failure_code"] == "SOURCE_READ_FAILED"
     engine.dispose()
 
 

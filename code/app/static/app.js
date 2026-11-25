@@ -370,7 +370,12 @@ if (adminAccess) {
       body.replaceChildren();
       payload.recent_ingestion_runs.forEach((run) => {
         const row = document.createElement("tr");
-        [run.source, run.status, run.accepted, run.started_at].forEach((value) => {
+        let failure = run.failure_code || (run.status === "failed" ? "Not recorded" : "—");
+        if (run.failure_position != null) {
+          const position = run.failure_position_kind === "csv_line" ? "CSV line" : "Record";
+          failure += ` (${position} ${run.failure_position})`;
+        }
+        [run.source, run.status, run.accepted, run.started_at, failure].forEach((value) => {
           const cell = document.createElement("td");
           cell.textContent = String(value);
           row.append(cell);

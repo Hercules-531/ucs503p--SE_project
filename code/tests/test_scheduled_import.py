@@ -32,9 +32,9 @@ def test_scheduled_snapshot_skips_unchanged_and_recovers_from_tampering(tmp_path
         with pytest.raises(ValueError, match="checksum"):
             run_checked_import(session, path, verified_on, digest)
         assert len(read_records(session, "location")) == 1
-        assert (
-            session.scalar(select(IngestionRun).order_by(IngestionRun.id.desc())).status == "failed"
-        )
+        failed = session.scalar(select(IngestionRun).order_by(IngestionRun.id.desc()))
+        assert failed.status == "failed"
+        assert failed.failure_code == "SNAPSHOT_CHECKSUM_MISMATCH"
 
         path.write_bytes(original)
         assert run_checked_import(session, path, verified_on, digest) == "imported"

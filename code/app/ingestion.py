@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from csv import Error as CsvError
 from typing import Any
 
 from pydantic import BaseModel
@@ -16,6 +17,23 @@ from app.search import update_scheme_index
 from app.storage import Dataset, DatasetRevision, IngestionRun, StoredRecord, utc_now
 
 LOOKUP_BATCH_SIZE = 500
+
+
+class ImportRejected(ValueError):
+    """An input failure whose code and position can be shown to operators."""
+
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        position: int | None = None,
+        position_kind: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.position = position
+        self.position_kind = position_kind
 
 
 class DataSourceAdapter(ABC):
@@ -118,8 +136,35 @@ def validate_scheme_slugs(session: Session, adapter: DataSourceAdapter, records:
     identifiers_by_slug = {}
     for identifier, slug in slugs_by_id.items():
         if slug in identifiers_by_slug:
-            raise ValueError(f"Duplicate scheme slug: {slug}")
+            raise ImportRejected("DUPLICATE_SCHEME_SLUG", f"Duplicate scheme slug: {slug}")
         identifiers_by_slug[slug] = identifier
+
+
+def collect_normalized_records(adapter: DataSourceAdapter) -> dict[str, BaseModel]:
+    records: dict[str, BaseModel] = {}
+    for position, raw in enumerate(adapter.collect(), start=1):
+        try:
+            normalized = adapter.normalize(raw)
+        except ValueError:
+            raise ImportRejected(
+                "INVALID_RECORD",
+                f"Invalid record at position {position}",
+                position=position,
+                position_kind="record",
+            ) from None
+        identifier = str(getattr(normalized, adapter.id_field))
+        previous = records.get(identifier)
+        if previous is not None and previous != normalized:
+            raise ImportRejected(
+                "CONFLICTING_DUPLICATE",
+                f"Conflicting duplicate identifier: {identifier}",
+                position=position,
+                position_kind="record",
+            )
+        records[identifier] = normalized
+    if not records:
+        raise ImportRejected("EMPTY_SNAPSHOT", "Source returned an empty batch")
+    return records
 
 
 def ingest(session: Session, adapter: DataSourceAdapter) -> IngestionRun:
@@ -128,18 +173,10 @@ def ingest(session: Session, adapter: DataSourceAdapter) -> IngestionRun:
     run = IngestionRun(source=adapter.name, started_at=utc_now(), status="running", accepted=0)
     session.add(run)
     session.commit()
+    failure_code = "SOURCE_READ_FAILED"
     try:
-        records: dict[str, BaseModel] = {}
-        for raw in adapter.collect():
-            normalized = adapter.normalize(raw)
-            identifier = str(getattr(normalized, adapter.id_field))
-            if identifier in records:
-                if records[identifier] != normalized:
-                    raise ValueError(f"Conflicting duplicate identifier: {identifier}")
-                continue
-            records[identifier] = normalized
-        if not records:
-            raise ValueError("Source returned an empty batch")
+        records = collect_normalized_records(adapter)
+        failure_code = "STORE_FAILED"
         if adapter.kind == "scheme":
             validate_scheme_slugs(session, adapter, records)
         identifiers = list(records)
@@ -206,7 +243,13 @@ def ingest(session: Session, adapter: DataSourceAdapter) -> IngestionRun:
         if affected:
             bump_revision(session, adapter.kind)
         run.status = "failed"
-        run.error = str(exc)[:1000]
+        if isinstance(exc, ImportRejected):
+            failure_code = exc.code
+            run.failure_position = exc.position
+            run.failure_position_kind = exc.position_kind
+        elif isinstance(exc, CsvError):
+            failure_code = "INVALID_CSV"
+        run.failure_code = failure_code
         run.finished_at = utc_now()
         session.commit()
         raise

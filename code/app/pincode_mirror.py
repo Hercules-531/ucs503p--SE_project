@@ -5,6 +5,7 @@ import io
 from datetime import date
 from pathlib import Path
 
+from app.ingestion import ImportRejected
 from app.ogd_pincode import SOURCE_URL, OgdPincodeCsvAdapter, read_snapshot
 
 MIRROR_COMMIT = "d26206918dd2fb9f155bfba18de0421bd5fa0ca8"
@@ -24,7 +25,9 @@ class PincodeMirrorAdapter(OgdPincodeCsvAdapter):
     def collect(self):
         data = read_snapshot(self.path)
         if hashlib.sha256(data).hexdigest() != MIRROR_SHA256:
-            raise ValueError("Mirror snapshot does not match the pinned checksum")
+            raise ImportRejected(
+                "SNAPSHOT_CHECKSUM_MISMATCH", "Mirror snapshot does not match the pinned checksum"
+            )
         with io.StringIO(data.decode("utf-8-sig"), newline="") as source_file:
             for record in self.collect_file(source_file):
                 record["source"] = {

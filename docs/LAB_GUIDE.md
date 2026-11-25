@@ -87,7 +87,7 @@ This is the **target** runtime/time-ordered view for a protected API request. Th
 
 ![BharatOS activity diagram](diagrams/rendered/activity.svg)
 
-This is the **target** control-flow view of ingestion. It has an initial node and terminal paths for collection, validation, quarantine, deduplication and publication. Today, the importer validates the whole batch, deduplicates identical identifiers, rejects conflicting duplicates, rolls back invalid batches and marks affected prior records `review_due`. A persistent quarantine workflow and configurable batch-quality thresholds remain planned.
+This is the **target** control-flow view of ingestion. It has paths for collection, validation, quarantine, deduplication and publication. Today a failed batch publishes zero records. The last good data remains available with `review_due` status. Each failed run records a diagnostic code and the first offending record or CSV line when known. Keep the original snapshot for investigation. After correcting the adapter or obtaining a corrected snapshot, repeat the import. Configurable thresholds and selective release of quarantined records remain planned.
 
 ### Component Diagram
 

@@ -141,6 +141,12 @@ invalid future timestamp. A check is a point-in-time observation, not continuous
 The API error table groups the last 24 hours of recorded errors by route and HTTP status.
 It includes requests with a valid key and omits query values, PINs, credentials, and account data.
 
+Failed ingestion runs show a code and, when available, the first rejected record position or
+CSV line. The dashboard uses these diagnostics without publishing the source value or exception
+text. Invalid batches retain the previous catalogue and mark affected records for review. Keep
+the original snapshot for investigation and rerun the adapter with corrected input. Older
+failed runs may have no structured diagnostic.
+
 The dataset registry records the adapter's canonical record type and snapshot policy, including
 first runs that fail before publishing records. Migration backfills identities from records and
 run history. Policies for older entries become known after another import attempt. Apply the new

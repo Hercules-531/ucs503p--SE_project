@@ -19,7 +19,7 @@ def test_upgrade_creates_new_migrated_copy_and_preserves_source(tmp_path, monkey
     assert source.read_bytes() == before
     with sqlite3.connect(source) as old, sqlite3.connect(destination) as new:
         assert old.execute("SELECT version_num FROM alembic_version").fetchone() == ("20261113_08",)
-        assert new.execute("SELECT version_num FROM alembic_version").fetchone() == ("20261125_11",)
+        assert new.execute("SELECT version_num FROM alembic_version").fetchone() == ("20261125_12",)
         old_count = old.execute("SELECT COUNT(*) FROM normalized_records").fetchone()
         assert old_count[0] > 0
         assert new.execute("SELECT COUNT(*) FROM normalized_records").fetchone() == old_count
