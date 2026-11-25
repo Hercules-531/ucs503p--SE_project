@@ -179,8 +179,38 @@ def test_openapi_documents_distinct_security_schemes_and_errors() -> None:
     assert {"DeveloperSession": []} in keys["security"]
     reference = client.get("/reference")
     assert reference.status_code == 200
-    assert "SwaggerUIBundle" in reference.text
-    assert "/openapi.json" in reference.text
+    assert 'data-openapi-url="/openapi.json"' in reference.text
+    assert 'src="/static/vendor/swagger-ui/swagger-ui-bundle.js"' in reference.text
+
+
+def test_browser_security_headers_keep_portal_and_reference_same_origin(monkeypatch) -> None:
+    monkeypatch.setattr(web, "engine", None)
+    for path in (
+        "/",
+        "/locations?pincode=147004",
+        "/developers",
+        "/reference",
+        "/diagrams/index.html",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.headers["referrer-policy"] == "no-referrer"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["x-frame-options"] == "SAMEORIGIN"
+        policy = response.headers["content-security-policy"]
+        assert "default-src 'self'" in policy
+        assert "frame-ancestors 'self'" in policy
+        assert "object-src 'none'" in policy
+        assert "'unsafe-eval'" not in policy
+        if path == "/diagrams/index.html":
+            assert "script-src 'none'" in policy
+        else:
+            assert "'unsafe-inline'" not in policy
+
+    api = client.get("/api/v1/admin/overview")
+    assert api.status_code == 503
+    assert api.headers["cache-control"] == "no-store"
+    assert api.headers["x-content-type-options"] == "nosniff"
 
 
 def test_openapi_documents_developer_and_admin_responses() -> None:

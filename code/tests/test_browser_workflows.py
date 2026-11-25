@@ -85,6 +85,68 @@ def test_developer_registers_runs_playground_and_revokes_key(developer_portal):
             browser.close()
 
 
+def test_reference_authorizes_and_calls_api_without_external_assets(developer_portal):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.set_default_timeout(8000)
+            outside_requests = []
+
+            def stay_local(route):
+                if route.request.url.startswith(f"{developer_portal}/"):
+                    route.continue_()
+                else:
+                    outside_requests.append(route.request.url)
+                    route.abort()
+
+            page.route("**/*", stay_local)
+            page.add_init_script("""
+                window.blockedResources = [];
+                document.addEventListener('securitypolicyviolation', event => {
+                    window.blockedResources.push([event.violatedDirective, event.blockedURI]);
+                });
+            """)
+            credentials = {"email": "reference@example.org", "password": "example-only-14-chars"}
+            developers = f"{developer_portal}/api/v1/developers"
+            assert page.request.post(f"{developers}/register", data=credentials).status == 201
+            login = page.request.post(f"{developers}/login", data=credentials)
+            assert login.status == 200
+            issued = page.request.post(
+                f"{developers}/keys",
+                headers={"Authorization": f"Bearer {login.json()['session_token']}"},
+            )
+            assert issued.status == 201
+
+            page.goto(f"{developer_portal}/reference", wait_until="domcontentloaded")
+            expect(page.get_by_role("heading", name="BharatOS API", level=1)).to_be_visible()
+            page.get_by_role("button", name="Authorize", exact=True).first.click()
+            key_dialog = page.locator(".auth-container").filter(has_text="X-API-Key")
+            key_dialog.locator("input").fill(issued.json()["key"])
+            key_dialog.get_by_role("button", name="Apply credentials").click()
+            key_dialog.get_by_role("button", name="Close", exact=True).click()
+
+            operation = page.locator(".opblock").filter(
+                has=page.locator('.opblock-summary-path[data-path="/api/v1/schemes"]')
+            )
+            operation.locator(".opblock-summary-control").click()
+            operation.get_by_role("button", name="Try it out").click()
+            with page.expect_response(
+                lambda response: (
+                    response.url.partition("?")[0] == f"{developer_portal}/api/v1/schemes"
+                )
+            ) as api_response:
+                operation.get_by_role("button", name="Execute").click()
+            response = api_response.value
+            assert response.status == 200
+            assert response.json()["meta"]["api_version"] == "v1"
+            expect(operation.locator(".live-responses-table")).to_contain_text("200")
+            assert not outside_requests
+            assert page.evaluate("window.blockedResources") == []
+        finally:
+            browser.close()
+
+
 def test_admin_shows_the_rejected_csv_line_without_source_values(
     developer_portal, tmp_path, monkeypatch
 ):

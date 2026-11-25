@@ -466,8 +466,9 @@ limit). Pages are ordered by scheme ID; `meta.result_count` is the returned page
 available when `limit` is omitted. As records change between calls, offset-based pages can shift.
 
 `/openapi.json` documents request and response fields, authentication, and error codes for the
-civic data, developer account, and administrator APIs. `/reference` opens the interactive API
-reference and loads its browser assets from a CDN. `/docs` contains the project guide.
+civic data, developer account, and administrator APIs. `/reference` runs the interactive Swagger
+UI using assets served by BharatOS, so it works without internet access. `/docs` contains the
+project guide.
 
 For a PowerShell 7.2+ request, use the address printed by the launcher and the key from the developer
 console. `Read-Host` keeps the key value out of the entered command.
@@ -492,6 +493,5 @@ Remove-Variable bharatosKey
 
 The original Phase 1 used in-process snapshots and a public demonstration key. Database-backed
 accounts, imports, PostgreSQL support, optional Redis limits and monitoring have since been added.
-The application remains an academic prototype: an official full PIN-directory import, broader
-datasets, an external developer pilot and production security/deployment are not complete. See
-the [roadmap](../docs/PHASE_ROADMAP.md) for the remaining work.
+The [roadmap](../docs/PHASE_ROADMAP.md) tracks the current monthly PIN import, broader datasets,
+external developer pilot, and production security review and deployment.

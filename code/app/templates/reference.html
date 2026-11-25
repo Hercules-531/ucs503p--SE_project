@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interactive API reference · BharatOS</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='vendor/swagger-ui/swagger-ui.css').path }}">
+  <script defer src="{{ url_for('static', path='vendor/swagger-ui/swagger-ui-bundle.js').path }}"></script>
+  <script defer src="{{ url_for('static', path='reference.js').path }}"></script>
+</head>
+<body>
+  <div id="swagger-ui" data-openapi-url="{{ url_for('openapi').path }}"></div>
+</body>
+</html>

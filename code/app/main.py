@@ -188,7 +188,7 @@ app = FastAPI(
     title="BharatOS API",
     description="Student project API for Indian public scheme and civic-data discovery.",
     version="0.1.0",
-    docs_url="/reference",
+    docs_url=None,
     redoc_url=None,
     responses={422: {"model": ErrorEnvelope, "description": "Invalid request"}},
 )
@@ -203,6 +203,12 @@ logger = logging.getLogger(__name__)
 api_key_scheme = APIKeyHeader(name="X-API-Key", scheme_name="ApiKey", auto_error=False)
 session_scheme = HTTPBearer(scheme_name="DeveloperSession", auto_error=False)
 admin_scheme = APIKeyHeader(name="X-Admin-Token", scheme_name="AdminToken", auto_error=False)
+PAGE_POLICY = (
+    "default-src 'self'; object-src 'none'; base-uri 'none'; "
+    "frame-ancestors 'self'; form-action 'self'"
+)
+REFERENCE_POLICY = f"{PAGE_POLICY}; img-src 'self' data:"
+DIAGRAM_POLICY = f"{PAGE_POLICY}; script-src 'none'; style-src 'self' 'unsafe-inline'"
 
 
 def write_request_log(key_id: str, endpoint: str, status: int, duration_ms: float) -> None:
@@ -220,14 +226,25 @@ def write_request_log(key_id: str, endpoint: str, status: int, duration_ms: floa
 
 
 @app.middleware("http")
-async def protect_developer_responses(request: Request, call_next):
+async def protect_responses_and_record_activity(request: Request, call_next):
     started = perf_counter()
     status = 500
+    path = request.url.path.removeprefix(request.scope.get("root_path", ""))
     try:
         response = await call_next(request)
         status = response.status_code
-        if request.url.path.startswith(("/api/v1/developers/", "/api/v1/admin/")):
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        if path.startswith(("/api/v1/developers/", "/api/v1/admin/")):
             response.headers["Cache-Control"] = "no-store"
+        if response.headers.get("content-type", "").partition(";")[0] == "text/html":
+            policy = PAGE_POLICY
+            if path == "/reference":
+                policy = REFERENCE_POLICY
+            elif path == "/diagrams/index.html":
+                policy = DIAGRAM_POLICY
+            response.headers["Content-Security-Policy"] = policy
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
         return response
     finally:
         key_id = getattr(request.state, "api_key_id", None)
@@ -883,6 +900,11 @@ def api_docs(request: Request) -> HTMLResponse:
         name="docs.html",
         context={**common_context("docs")},
     )
+
+
+@app.get("/reference", response_class=HTMLResponse, include_in_schema=False)
+def api_reference(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request=request, name="reference.html")
 
 
 @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)

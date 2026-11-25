@@ -57,6 +57,12 @@ monitoring. The local README describes the HTTPS profile and verified backup and
 Public deployment still requires an approved host, TLS configuration, data permission review and
 production security review.
 
+The application serves the interactive API reference and its pinned Swagger UI assets on the
+same origin. Its content security policy restricts portal scripts and network calls to that
+origin, and its referrer policy suppresses URL details when users visit source sites. Keep those
+response headers when configuring the reverse proxy. Update Swagger UI from its upstream
+distribution and rerun the browser test when the bundle changes.
+
 On 23 November 2026, the restricted login passed a Compose test on PostgreSQL 17 and Redis 7.
 The test covered discovery, registration, sign-in, protected requests, usage, key rotation,
 revocation, sign-out and admin overview. Source check inserts and updates succeeded.
