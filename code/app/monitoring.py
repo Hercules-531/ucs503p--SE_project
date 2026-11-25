@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import LocationRecord, Scheme, SourceMetadata
-from app.storage import Dataset, IngestionRun, StoredRecord
+from app.storage import ApiRequestLog, Dataset, IngestionRun, StoredRecord, utc_now
 
 REQUIRED_FIELDS = {
     "scheme": (
@@ -27,6 +27,31 @@ REQUIRED_FIELDS = {
     "location": ("pincode", "office_name", "district", "state", "country"),
 }
 MODELS = {"scheme": Scheme, "location": LocationRecord}
+
+
+def recent_api_errors(session: Session) -> dict:
+    """Count the most frequent route and status pairs from the last 24 hours."""
+    now = utc_now()
+    since = now - timedelta(hours=24)
+    count = func.count()
+    rows = session.execute(
+        select(ApiRequestLog.endpoint, ApiRequestLog.status_code, count)
+        .where(
+            ApiRequestLog.requested_at.between(since, now),
+            ApiRequestLog.status_code.between(400, 599),
+        )
+        .group_by(ApiRequestLog.endpoint, ApiRequestLog.status_code)
+        .order_by(count.desc(), ApiRequestLog.endpoint, ApiRequestLog.status_code)
+        .limit(20)
+    )
+    return {
+        "since": since.isoformat(),
+        "until": now.isoformat(),
+        "by_route": [
+            {"route": route, "status": status, "count": occurrences}
+            for route, status, occurrences in rows
+        ],
+    }
 
 
 def present(value) -> bool:

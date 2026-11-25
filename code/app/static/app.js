@@ -299,6 +299,20 @@ if (adminAccess) {
       document.querySelector("#admin-locations").textContent = payload.record_counts.location || 0;
       document.querySelector("#admin-requests").textContent = payload.request_count;
       document.querySelector("#admin-errors").textContent = payload.error_count;
+      const recentErrors = payload.recent_api_errors.by_route;
+      const errorRows = document.querySelector("#admin-recent-errors");
+      errorRows.replaceChildren();
+      recentErrors.forEach(({ route, status, count }) => {
+        const row = document.createElement("tr");
+        [route, status, count].forEach((value) => {
+          const cell = document.createElement("td");
+          cell.textContent = String(value);
+          row.append(cell);
+        });
+        errorRows.append(row);
+      });
+      document.querySelector("#admin-recent-errors-table").hidden = recentErrors.length === 0;
+      document.querySelector("#admin-recent-errors-empty").hidden = recentErrors.length !== 0;
       const cache = payload.cache;
       document.querySelector("#admin-cache").textContent = cache.status === "available"
         ? `Hits: ${cache.hits}; misses: ${cache.misses}; recorded errors: ${cache.errors}; hit ratio: ${cache.hit_ratio === null ? "not yet available" : `${(cache.hit_ratio * 100).toFixed(1)}%`}.`

@@ -45,7 +45,7 @@ from app.models import (
     Scheme,
     SuccessEnvelope,
 )
-from app.monitoring import monitoring_alerts, source_summaries
+from app.monitoring import monitoring_alerts, recent_api_errors, source_summaries
 from app.privacy import install_access_log_filter
 from app.rate_limit import RedisRateLimiter
 from app.readiness import database_readiness
@@ -213,23 +213,27 @@ def write_request_log(key_id: str, endpoint: str, status: int, duration_ms: floa
 @app.middleware("http")
 async def protect_developer_responses(request: Request, call_next):
     started = perf_counter()
-    response = await call_next(request)
-    if request.url.path.startswith(("/api/v1/developers/", "/api/v1/admin/")):
-        response.headers["Cache-Control"] = "no-store"
-    key_id = getattr(request.state, "api_key_id", None)
-    route = request.scope.get("route")
-    if engine is not None and key_id and route is not None:
-        try:
-            await run_in_threadpool(
-                write_request_log,
-                key_id,
-                route.path,
-                response.status_code,
-                (perf_counter() - started) * 1000,
-            )
-        except Exception:
-            logger.exception("Could not persist API request metadata")
-    return response
+    status = 500
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        if request.url.path.startswith(("/api/v1/developers/", "/api/v1/admin/")):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+    finally:
+        key_id = getattr(request.state, "api_key_id", None)
+        route = request.scope.get("route")
+        if engine is not None and key_id and route is not None:
+            try:
+                await run_in_threadpool(
+                    write_request_log,
+                    key_id,
+                    route.path,
+                    status,
+                    (perf_counter() - started) * 1000,
+                )
+            except Exception:
+                logger.warning("Could not persist API request metadata")
 
 
 @app.exception_handler(ApiProblem)
@@ -531,6 +535,7 @@ def admin_data() -> dict:
             )
             or 0
         )
+        api_errors = recent_api_errors(session)
         runs = session.scalars(
             select(IngestionRun).order_by(IngestionRun.id.desc()).limit(10)
         ).all()
@@ -552,6 +557,7 @@ def admin_data() -> dict:
         "record_counts": {kind: count for kind, count in counts},
         "request_count": total,
         "error_count": failures,
+        "recent_api_errors": api_errors,
         "recent_ingestion_runs": recent_runs,
         "sources": sources,
         "source_checks": probes,

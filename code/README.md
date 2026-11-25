@@ -138,6 +138,8 @@ unknown freshness, unavailable cache metrics and failed last source checks when 
 does not send notifications or retain alert history.
 The dashboard also warns when a source-page check is missing, more than 24 hours old, or has an
 invalid future timestamp. A check is a point-in-time observation, not continuous monitoring.
+The API error table groups the last 24 hours of recorded errors by route and HTTP status.
+It includes requests with a valid key and omits query values, PINs, credentials, and account data.
 
 The dataset registry records the adapter's canonical record type and snapshot policy, including
 first runs that fail before publishing records. Migration backfills identities from records and

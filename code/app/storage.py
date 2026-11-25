@@ -128,7 +128,9 @@ class ApiRequestLog(Base):
     endpoint: Mapped[str] = mapped_column(String(200), nullable=False)
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
     duration_ms: Mapped[float] = mapped_column(Float, nullable=False)
-    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
 
 
 def create_database(url: str):

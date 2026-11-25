@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from redis.exceptions import ConnectionError
 from sqlalchemy.orm import Session
 
 import app.main as web
+from app.credentials import token_hash
 from app.ingestion import SchemeSnapshotAdapter, ingest
 from app.storage import ApiKey, ApiRequestLog, Base, DeveloperAccount, create_database, utc_now
 
@@ -18,17 +21,29 @@ def test_admin_overview_requires_separate_token_and_reports_real_data(tmp_path, 
         session.flush()
         session.add(
             ApiKey(
-                id="key", account_id=account.id, key_hash="hash", prefix="key", created_at=utc_now()
+                id="key",
+                account_id=account.id,
+                key_hash=token_hash("test-key"),
+                prefix="key",
+                created_at=utc_now(),
             )
         )
         session.flush()
-        session.add(
+        now = utc_now()
+        session.add_all(
             ApiRequestLog(
                 key_id="key",
                 endpoint="/api/v1/schemes",
-                status_code=429,
+                status_code=status,
                 duration_ms=1.0,
-                requested_at=utc_now(),
+                requested_at=recorded_at,
+            )
+            for status, recorded_at in (
+                (429, now),
+                (429, now),
+                (503, now - timedelta(days=2)),
+                (200, now),
+                (500, now + timedelta(days=2)),
             )
         )
         session.commit()
@@ -36,18 +51,37 @@ def test_admin_overview_requires_separate_token_and_reports_real_data(tmp_path, 
     monkeypatch.setattr(web, "cache_client", None)
     token = "a" * 32
     monkeypatch.setattr(web, "ADMIN_TOKEN", token)
-    with TestClient(web.app) as client:
+
+    def catalogue_failure(_):
+        raise RuntimeError("private test failure")
+
+    monkeypatch.setattr(web, "current_scheme", catalogue_failure)
+    monkeypatch.setattr(web, "rate_limiter", None)
+    with TestClient(web.app, raise_server_exceptions=False) as client:
         assert client.get("/api/v1/admin/overview").status_code == 401
         assert (
             client.get("/api/v1/admin/overview", headers={"X-Admin-Token": "bad"}).status_code
             == 401
         )
+        failed = client.get(
+            "/api/v1/schemes/private-route-value?q=private-query-value",
+            headers={"X-API-Key": "test-key"},
+        )
+        assert failed.status_code == 500
         response = client.get("/api/v1/admin/overview", headers={"X-Admin-Token": token})
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store"
         payload = response.json()
         assert payload["record_counts"]["scheme"] == 8
-        assert payload["request_count"] == payload["error_count"] == 1
+        assert payload["request_count"] == 6
+        assert payload["error_count"] == 5
+        assert payload["recent_api_errors"]["by_route"] == [
+            {"route": "/api/v1/schemes", "status": 429, "count": 2},
+            {"route": "/api/v1/schemes/{scheme_id}", "status": 500, "count": 1},
+        ]
+        assert "private-route-value" not in response.text
+        assert "private-query-value" not in response.text
+        assert "private test failure" not in response.text
         assert payload["cache"]["status"] == "not_configured"
         assert payload["recent_ingestion_runs"][0]["status"] == "success"
         source = payload["sources"][0]

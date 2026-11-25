@@ -23,6 +23,17 @@
       <article class="metric"><span>API requests</span><strong id="admin-requests">0</strong><small>Authenticated calls</small></article>
       <article class="metric"><span>API errors</span><strong id="admin-errors">0</strong><small>HTTP 4xx and 5xx</small></article>
     </div>
+    <section class="work-panel" aria-labelledby="admin-api-errors-heading">
+      <h2 id="admin-api-errors-heading">API errors in the last 24 hours</h2>
+      <p>Top 20 route and status pairs from recorded requests with a valid key. HTTP 429 means the request exceeded its quota. HTTP 5xx indicates a service failure.</p>
+      <p id="admin-recent-errors-empty" hidden>No API errors recorded in this window.</p>
+      <div class="api-table-wrap" id="admin-recent-errors-table" hidden>
+        <table class="api-table" aria-labelledby="admin-api-errors-heading">
+          <thead><tr><th scope="col">Route</th><th scope="col">HTTP status</th><th scope="col">Count</th></tr></thead>
+          <tbody id="admin-recent-errors"></tbody>
+        </table>
+      </div>
+    </section>
     <section class="work-panel" aria-labelledby="admin-alert-heading">
       <h2 id="admin-alert-heading">Current checks</h2>
       <p>These checks are evaluated when the page is loaded; they do not send notifications.</p>
