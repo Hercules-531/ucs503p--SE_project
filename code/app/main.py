@@ -490,11 +490,15 @@ def list_developer_keys(account_id: int = Depends(account_session)) -> dict:
 
 @app.get("/api/v1/developers/usage", tags=["Developer access"])
 def developer_usage(account_id: int = Depends(account_session)) -> dict:
+    now = datetime.now(UTC)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     with Session(engine) as session:
         row = session.execute(
             select(
                 func.count(ApiRequestLog.id),
                 func.avg(ApiRequestLog.duration_ms),
+                func.count().filter(ApiRequestLog.requested_at.between(day_start, now)),
+                func.count().filter(ApiRequestLog.status_code.between(200, 299)),
             )
             .join(ApiKey, ApiRequestLog.key_id == ApiKey.id)
             .where(ApiKey.account_id == account_id)
@@ -509,6 +513,8 @@ def developer_usage(account_id: int = Depends(account_session)) -> dict:
     return {
         "total_requests": row[0],
         "average_duration_ms": round(row[1], 2) if row[1] is not None else None,
+        "requests_today": row[2],
+        "success_rate": round(row[3] / row[0], 4) if row[0] else None,
         "endpoints": [{"path": endpoint, "count": count} for endpoint, count in counts],
     }
 
@@ -557,6 +563,7 @@ def admin_data() -> dict:
         "record_counts": {kind: count for kind, count in counts},
         "request_count": total,
         "error_count": failures,
+        "error_rate": round(failures / total, 4) if total else None,
         "recent_api_errors": api_errors,
         "recent_ingestion_runs": recent_runs,
         "sources": sources,

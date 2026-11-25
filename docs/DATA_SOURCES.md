@@ -54,6 +54,8 @@ returned HTTP 403 again. The [IndiaAI AIKosh listing](https://aikosh.indiaai.gov
 points to that same OGD resource. A full official file remains unavailable in this environment.
 The PIN adapters now store the SHA-256 of each newly imported file with the record provenance.
 The manual official importer can match it against an operator-reviewed digest.
+When trimming changes a PIN, office, district or state value, the office keeps the original text
+under `original_values`. Equivalent office entries still share one normalized office record.
 
 ### Historical third-party mirror
 

@@ -72,8 +72,22 @@ def test_developer_key_lifecycle(tmp_path, monkeypatch):
             ).status_code
             == 404
         )
+        with Session(engine) as session:
+            session.add(
+                ApiRequestLog(
+                    key_id=key_id,
+                    endpoint="/api/v1/schemes",
+                    status_code=200,
+                    duration_ms=1.0,
+                    requested_at=datetime.now(UTC) - timedelta(days=1),
+                )
+            )
+            session.commit()
         usage = client.get("/api/v1/developers/usage", headers=auth).json()
-        assert usage["total_requests"] == 2
+        assert usage["total_requests"] == 3
+        assert usage["requests_today"] == 2
+        assert usage["success_rate"] == 0.6667
+        assert usage["average_duration_ms"] >= 0
         assert {item["path"] for item in usage["endpoints"]} == {
             "/api/v1/schemes",
             "/api/v1/schemes/{scheme_id}",
@@ -86,6 +100,8 @@ def test_developer_key_lifecycle(tmp_path, monkeypatch):
             "/api/v1/developers/usage", headers={"Authorization": "Bearer " + other_token}
         )
         assert other_usage.json()["total_requests"] == 0
+        assert other_usage.json()["requests_today"] == 0
+        assert other_usage.json()["success_rate"] is None
         assert (
             client.get("/api/v1/schemes", headers={"X-API-Key": web.DEMO_API_KEY}).status_code
             == 401
@@ -102,7 +118,7 @@ def test_developer_key_lifecycle(tmp_path, monkeypatch):
         assert credentials["password"] not in account.password_hash
         assert key != stored_key.key_hash
         logs = session.scalars(select(ApiRequestLog)).all()
-        assert len(logs) == 2
+        assert len(logs) == 3
         assert all("secret" not in log.endpoint and key not in log.endpoint for log in logs)
     engine.dispose()
 

@@ -1,0 +1,81 @@
+"""Exercise the real developer portal and protected requests in Chromium."""
+
+import json
+import os
+import socket
+from threading import Thread
+from time import monotonic, sleep
+
+import pytest
+from playwright.sync_api import expect, sync_playwright
+from uvicorn import Config, Server
+
+import app.main as web
+from app.storage import create_database
+from scripts.start_local import initialize_database, sqlite_url
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_BROWSER_TESTS") != "1",
+    reason="Install Chromium and set RUN_BROWSER_TESTS=1 to run browser checks",
+)
+
+
+@pytest.fixture
+def developer_portal(tmp_path, monkeypatch):
+    database = tmp_path / "browser.db"
+    initialize_database(database)
+    engine = create_database(sqlite_url(database))
+    monkeypatch.setattr(web, "engine", engine)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+        server = Server(Config(web.app, loop="asyncio", log_level="warning"))
+        worker = Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
+        worker.start()
+        try:
+            deadline = monotonic() + 10
+            while not server.started and worker.is_alive() and monotonic() < deadline:
+                sleep(0.02)
+            assert server.started, "The test portal did not start"
+            yield f"http://127.0.0.1:{port}"
+        finally:
+            server.should_exit = True
+            worker.join(timeout=5)
+            engine.dispose()
+
+
+def test_developer_registers_runs_playground_and_revokes_key(developer_portal):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.goto(f"{developer_portal}/developers", wait_until="domcontentloaded")
+            page.get_by_label("Email").fill("developer@example.org")
+            page.get_by_label("Password").fill("temporary-browser-test-password")
+            page.get_by_role("button", name="Register", exact=True).click()
+            expect(page.locator("#developer-message")).to_contain_text("Account created")
+            page.get_by_role("button", name="Sign in", exact=True).click()
+            page.get_by_role("button", name="Create key", exact=True).click()
+            expect(page.locator("#new-key")).to_contain_text("bsk_")
+
+            page.get_by_role("combobox", name="Endpoint").select_option("pincode")
+            page.locator("#endpoint-parameter").fill("147004")
+            page.get_by_role("button", name="Run request", exact=True).click()
+            expect(page.locator("#request-status")).to_contain_text("200")
+            payload = json.loads(page.locator("#api-response").inner_text())
+            assert payload["data"]["pincode"] == "147004"
+            assert payload["meta"]["api_version"] == "v1"
+            expect(page.locator("#usage-today")).to_contain_text("Requests today (UTC): 1")
+            expect(page.locator("#usage-today")).to_contain_text("100.0%")
+            expect(page.locator("#usage-endpoints")).to_contain_text("/api/v1/locations/pincode/")
+
+            page.get_by_role("button", name="Revoke key").click()
+            expect(page.locator("#developer-key-list")).to_contain_text("revoked")
+            page.get_by_role("button", name="Run request", exact=True).click()
+            expect(page.locator("#request-status")).to_contain_text("401")
+            assert json.loads(page.locator("#api-response").inner_text())["error"]["code"] == (
+                "INVALID_API_KEY"
+            )
+        finally:
+            browser.close()

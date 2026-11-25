@@ -55,7 +55,7 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
                 yield record
 
     def collect_file(self, file: TextIO) -> Iterable[dict[str, Any]]:
-        grouped: dict[str, set[tuple[str, str, str]]] = defaultdict(set)
+        grouped: dict[str, dict[tuple[str, str, str], dict[str, set[str]]]] = defaultdict(dict)
         reader = csv.DictReader(file, strict=True)
         if reader.fieldnames is None:
             raise ValueError("CSV has no header")
@@ -71,15 +71,24 @@ class OgdPincodeCsvAdapter(DataSourceAdapter):
         for line, row in enumerate(reader, start=2):
             if None in row:
                 raise ValueError(f"Extra fields in CSV record at line {line}")
-            values = [(row.get(headers[field]) or "").strip() for field in required]
+            original = [row.get(headers[field]) or "" for field in required]
+            values = [value.strip() for value in original]
             office, pincode, district, state = values
             if not re.fullmatch(r"[0-9]{6}", pincode) or not all((office, district, state)):
                 raise ValueError(f"Invalid office record at CSV line {line}")
-            grouped[pincode].add((office, district, state))
+            changed = grouped[pincode].setdefault((office, district, state), {})
+            for field, raw, normalized in zip(required, original, values, strict=True):
+                if raw != normalized:
+                    changed.setdefault(field, set()).add(raw)
         for pincode, entries in sorted(grouped.items()):
             offices = [
-                {"office_name": office, "district": district, "state": state}
-                for office, district, state in sorted(entries)
+                {
+                    "office_name": office,
+                    "district": district,
+                    "state": state,
+                    "original_values": {field: sorted(values) for field, values in changed.items()},
+                }
+                for (office, district, state), changed in sorted(entries.items())
             ]
             yield {
                 "pincode": pincode,

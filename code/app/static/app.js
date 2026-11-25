@@ -123,6 +123,7 @@ if (developerAccess) {
   const newKey = document.querySelector("#new-key");
   const newKeyContainer = document.querySelector("#new-key-container");
   const usageAverage = document.querySelector("#usage-average");
+  const usageToday = document.querySelector("#usage-today");
   const usageEndpoints = document.querySelector("#usage-endpoints");
   let sessionToken = null;
 
@@ -146,6 +147,7 @@ if (developerAccess) {
     document.querySelector("#playground-key").value = "";
     document.querySelector("#request-count").textContent = "0";
     usageAverage.textContent = "Sign in to load usage.";
+    usageToday.hidden = true;
     usageEndpoints.replaceChildren();
   }
 
@@ -154,6 +156,10 @@ if (developerAccess) {
     try {
       const usage = await request("/api/v1/developers/usage");
       document.querySelector("#request-count").textContent = String(usage.total_requests);
+      usageToday.textContent = `Requests today (UTC): ${usage.requests_today}. All-time success rate: ${
+        usage.success_rate === null ? "—" : (usage.success_rate * 100).toFixed(1) + "%"
+      }.`;
+      usageToday.hidden = false;
       usageAverage.textContent = usage.average_duration_ms === null
         ? "No recorded requests yet."
         : `Average recorded duration: ${usage.average_duration_ms} ms.`;
@@ -165,6 +171,7 @@ if (developerAccess) {
       });
     } catch (error) {
       usageAverage.textContent = "Usage could not be loaded.";
+      usageToday.hidden = true;
       usageEndpoints.replaceChildren();
       message.textContent = error.message;
     }
@@ -299,6 +306,9 @@ if (adminAccess) {
       document.querySelector("#admin-locations").textContent = payload.record_counts.location || 0;
       document.querySelector("#admin-requests").textContent = payload.request_count;
       document.querySelector("#admin-errors").textContent = payload.error_count;
+      document.querySelector("#admin-error-rate").textContent = payload.error_rate === null
+        ? "HTTP 4xx and 5xx"
+        : `${(payload.error_rate * 100).toFixed(1)}% of recorded requests`;
       const recentErrors = payload.recent_api_errors.by_route;
       const errorRows = document.querySelector("#admin-recent-errors");
       errorRows.replaceChildren();

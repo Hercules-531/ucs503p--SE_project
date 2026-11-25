@@ -34,12 +34,14 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
+      - run: uv run playwright install --with-deps --only-shell chromium
       - run: uv run ruff check .
       - run: uv run alembic upgrade head
       - run: uv run python -m scripts.ingest_snapshots
       - run: uv run python -m scripts.ingest_pib_programmes
       - run: uv run pytest -q
         env:
+          RUN_BROWSER_TESTS: "1"
           TEST_SERVICE_DATABASE_URL: postgresql+psycopg://bharatos:test-only-password@localhost:5432/bharatos_test
           TEST_SERVICE_REDIS_URL: redis://localhost:6379/0
           TEST_POSTGRES_MIGRATION_URL: postgresql+psycopg://bharatos:test-only-password@localhost:5432/bharatos_test

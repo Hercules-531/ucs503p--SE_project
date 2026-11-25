@@ -75,6 +75,7 @@ def test_admin_overview_requires_separate_token_and_reports_real_data(tmp_path, 
         assert payload["record_counts"]["scheme"] == 8
         assert payload["request_count"] == 6
         assert payload["error_count"] == 5
+        assert payload["error_rate"] == 0.8333
         assert payload["recent_api_errors"]["by_route"] == [
             {"route": "/api/v1/schemes", "status": 429, "count": 2},
             {"route": "/api/v1/schemes/{scheme_id}", "status": 500, "count": 1},

@@ -194,8 +194,9 @@ Use `POST /api/v1/developers/keys/{id}/rotate` to atomically revoke an active ke
 a replacement. The old key stops working immediately. Save the new key from the response;
 if the response is lost, create another key from your authenticated session.
 The fixed demonstration key only works without `DATABASE_URL`.
-`GET /api/v1/developers/usage` reports request totals, average request duration and counts per
-route for the signed-in developer. Logs omit request bodies, query parameters and raw credentials.
+`GET /api/v1/developers/usage` reports request totals, requests today (UTC), the share of recorded
+calls that returned HTTP 2xx, average request duration, and counts per route for the signed-in
+developer. Logs omit request bodies, query parameters and raw credentials.
 
 The `/developers` page also supports registration, sign-in, key creation and revocation in
 database mode. A newly created key is inserted into the playground; copy it before leaving the
@@ -455,6 +456,7 @@ Remove-Variable bharatosKey
 
 - [Software Engineering Lab guide](../docs/LAB_GUIDE.md)
 - [Phased roadmap](../docs/PHASE_ROADMAP.md)
+- [Functional requirement test coverage](../docs/REQUIREMENTS_TESTS.md)
 - [Data-source register](../docs/DATA_SOURCES.md)
 - [UML sources and render notes](../docs/diagrams/README.md)
 - [Course report folders](../project-report-prototype-stage)

@@ -5,12 +5,14 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from redis import Redis
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 import app.main as web
 from app.cache import cache_metrics, cached_records
+from app.credentials import token_hash
 from app.data import LOCATIONS, SCHEMES, filter_schemes, uncertain_filter_exclusions
 from app.ingestion import DataSourceAdapter, SchemeSnapshotAdapter, ingest
 from app.models import LocationRecord, Scheme
@@ -22,7 +24,16 @@ from app.search import (
     indexed_uncertain_exclusions,
 )
 from app.source_checks import store_source_checks
-from app.storage import SourceProbe, StoredRecord, create_database, read_records
+from app.storage import (
+    ApiKey,
+    ApiRequestLog,
+    DeveloperAccount,
+    SourceProbe,
+    StoredRecord,
+    create_database,
+    read_records,
+    utc_now,
+)
 
 
 @pytest.mark.skipif(
@@ -34,6 +45,46 @@ def test_postgres_migrated_snapshot_is_readable():
         count = session.scalar(select(func.count()).select_from(StoredRecord))
         assert count >= 11
     engine.dispose()
+
+
+@pytest.mark.skipif(
+    not os.getenv("TEST_SERVICE_DATABASE_URL"), reason="No integration PostgreSQL configured"
+)
+def test_postgres_serves_a_canonical_pin_through_the_protected_api(monkeypatch):
+    engine = create_database(os.environ["TEST_SERVICE_DATABASE_URL"])
+    key_id = uuid4().hex
+    raw_key = uuid4().hex
+    with Session(engine) as session:
+        account = DeveloperAccount(email=f"{key_id}@example.org", password_hash="unused")
+        session.add(account)
+        session.flush()
+        account_id = account.id
+        session.add(
+            ApiKey(
+                id=key_id,
+                account_id=account_id,
+                key_hash=token_hash(raw_key),
+                prefix=raw_key[:12],
+                created_at=utc_now(),
+            )
+        )
+        session.commit()
+    monkeypatch.setattr(web, "engine", engine)
+    monkeypatch.setattr(web, "rate_limiter", None)
+    try:
+        with TestClient(web.app) as client:
+            response = client.get(
+                "/api/v1/locations/pincode/147004", headers={"X-API-Key": raw_key}
+            )
+            assert response.status_code == 200
+            assert response.json()["data"]["state"] == LOCATIONS["147004"].state
+            assert response.json()["data"]["source"]["url"]
+    finally:
+        with engine.begin() as connection:
+            connection.execute(delete(ApiRequestLog).where(ApiRequestLog.key_id == key_id))
+            connection.execute(delete(ApiKey).where(ApiKey.id == key_id))
+            connection.execute(delete(DeveloperAccount).where(DeveloperAccount.id == account_id))
+        engine.dispose()
 
 
 @pytest.mark.skipif(
@@ -142,13 +193,13 @@ def test_postgres_uncertain_filter_count_matches_python():
                 )
                 assert indexed_uncertain_exclusions(session, **filters) >= 1
                 expected = sorted(
-                    record.id for record in filter_schemes(
-                        records=records, include_unknown=True, **filters
-                    )
+                    record.id
+                    for record in filter_schemes(records=records, include_unknown=True, **filters)
                 )
-                actual = [record.id for record in indexed_schemes(
-                    session, include_unknown=True, **filters
-                )]
+                actual = [
+                    record.id
+                    for record in indexed_schemes(session, include_unknown=True, **filters)
+                ]
                 assert actual == expected
                 assert identifier in actual
         finally:

@@ -54,6 +54,7 @@ class PostOffice(BaseModel):
     office_name: str = Field(min_length=1)
     district: str = Field(min_length=1)
     state: str = Field(min_length=1)
+    original_values: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class LocationRecord(BaseModel):

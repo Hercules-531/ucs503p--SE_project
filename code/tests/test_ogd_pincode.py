@@ -13,7 +13,7 @@ def test_csv_groups_offices_and_preserves_attribution(tmp_path):
     csv_path = tmp_path / "offices.csv"
     csv_path.write_text(
         "officename,pincode,district,statename\n"
-        "Alpha,123456,First,State A\n"
+        " Alpha ,123456,First,State A\n"
         "Beta,123456,Second,State A\n"
         "Alpha,123456,First,State A\n"
         "Gamma,654321,Third,State B\n",
@@ -28,6 +28,8 @@ def test_csv_groups_offices_and_preserves_attribution(tmp_path):
         records = read_records(session, "location")
         first = next(record for record in records if record["pincode"] == "123456")
         assert [office["office_name"] for office in first["offices"]] == ["Alpha", "Beta"]
+        assert first["offices"][0]["original_values"] == {"officename": [" Alpha "]}
+        assert csv_path.read_text(encoding="utf-8").count(" Alpha ") == 1
         assert first["offices"][1]["district"] == "Second"
         assert first["source"]["license_name"] == "Government Open Data License - India"
         assert first["source"]["url"].startswith("https://www.data.gov.in/")

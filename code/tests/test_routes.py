@@ -147,7 +147,11 @@ def test_filters_explain_records_hidden_by_missing_information(monkeypatch):
         assert api.json()["meta"]["uncertain_excluded_count"] == 0
 
 
-def test_api_requires_exact_demo_key() -> None:
+def test_api_requires_exact_demo_key(monkeypatch) -> None:
+    def reject_data_access():
+        pytest.fail("Requests without a valid key must not read the catalogue")
+
+    monkeypatch.setattr(web, "current_schemes", reject_data_access)
     missing = client.get("/api/v1/schemes")
     invalid = client.get("/api/v1/schemes", headers={"X-API-Key": "wrong"})
     assert missing.status_code == 401
@@ -163,7 +167,14 @@ def test_openapi_documents_distinct_security_schemes_and_errors() -> None:
     assert schemes["DeveloperSession"]["scheme"] == "bearer"
     data = spec["paths"]["/api/v1/schemes"]["get"]
     assert {"ApiKey": []} in data["security"]
-    assert "429" in data["responses"]
+    assert {"q", "category", "state", "audience"}.issubset(
+        {parameter["name"] for parameter in data["parameters"]}
+    )
+    assert {"200", "401", "429"}.issubset(data["responses"])
+    assert (
+        data["responses"]["401"]["content"]["application/json"]["schema"]["$ref"]
+        == "#/components/schemas/ErrorEnvelope"
+    )
     keys = spec["paths"]["/api/v1/developers/keys"]["get"]
     assert {"DeveloperSession": []} in keys["security"]
     assert client.get("/reference").status_code == 200
@@ -260,6 +271,17 @@ def test_scheme_pages_handle_unverified_source_dates(monkeypatch):
     assert "Review needed" in home.text
     assert detail.status_code == 200
     assert "Not independently verified" in detail.text
+
+
+def test_scheme_detail_displays_summary_relevance_and_source():
+    record = SCHEMES[0]
+    response = client.get(f"/schemes/{record.slug}")
+    assert response.status_code == 200
+    rendered = unescape(response.text)
+    assert record.summary in rendered
+    assert record.eligibility_summary in rendered
+    assert str(record.source.url) in rendered
+    assert record.source.last_verified.strftime("%d %b %Y") in rendered
 
 
 def test_scheme_detail_api_handles_success_and_missing_record() -> None:
