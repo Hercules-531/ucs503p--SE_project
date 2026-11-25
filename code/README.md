@@ -64,8 +64,9 @@ occupy that port in the meantime; restart the launcher if that happens.
    the setup container applies migrations before the web service starts.
 3. On a new installation, seed the existing curated snapshots once with
    `docker compose run --rm setup python -m scripts.ingest_snapshots`.
-4. Open <http://127.0.0.1:8000>. Health checks are available at `/health/live` and
-   `/health/ready`.
+4. Open <http://127.0.0.1:8000>. `/health/live` checks the running process. `/health/ready`
+   also checks the database migration revision, read access for the web account and Redis when
+   configured.
 
 The database is kept in the `postgres_data` Docker volume. `docker compose down` stops the
 stack without deleting that volume. Do not use `docker compose down -v` unless you intend to

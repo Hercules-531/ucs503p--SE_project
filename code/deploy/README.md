@@ -39,8 +39,14 @@ Open the configured local web port. Check `/health/ready`, browse schemes, then 
 developer, create a key, make a request and verify that it appears in usage. The grant script
 can be re-run for the same login. Review its table and sequence list after schema changes and
 reapply it after a restore if the restore omitted grants.
-After applying the dataset registry migration, reapply the grant script to give the web service
-read access to the new registry.
+Reapply the grant script when upgrading from a release before the dataset registry or the
+revision-aware readiness check.
+
+Readiness returns `schema_mismatch` when the database revision differs from the running
+application or the revision table is absent. Migrate an older database with the owner account.
+For a newer database, start the matching application release. The result `schema_unavailable` means
+the connection works but a required table or column cannot be read. Check the schema and apply
+the web grants again before sending traffic to the service.
 
 On a database that grants `PUBLIC` permission to create in the `public` schema, the script stops.
 Review that grant with the database owner before running it again. Use a dedicated login without

@@ -45,7 +45,8 @@ END
 $check$;
 
 GRANT USAGE ON SCHEMA public TO bharatos_web;
-GRANT SELECT ON public.normalized_records, public.datasets, public.dataset_revisions,
+GRANT SELECT ON public.alembic_version, public.normalized_records, public.datasets,
+    public.dataset_revisions,
     public.scheme_search_index,
     public.scheme_search_values, public.ingestion_runs TO bharatos_web;
 

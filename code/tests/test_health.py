@@ -1,6 +1,9 @@
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from redis.exceptions import ConnectionError
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 
@@ -9,7 +12,10 @@ from app.storage import create_database
 
 
 def test_readiness_reports_configured_dependencies(tmp_path, monkeypatch):
-    engine = create_database(f"sqlite:///{(tmp_path / 'health.db').as_posix()}")
+    database_url = f"sqlite:///{(tmp_path / 'health.db').as_posix()}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    command.upgrade(Config(str(web.PROJECT_DIR / "alembic.ini")), "head")
+    engine = create_database(database_url)
     monkeypatch.setattr(web, "engine", engine)
     monkeypatch.setattr(web, "cache_client", None)
     with TestClient(web.app) as client:
@@ -17,6 +23,27 @@ def test_readiness_reports_configured_dependencies(tmp_path, monkeypatch):
         ready = client.get("/health/ready")
         assert ready.status_code == 200
         assert ready.json()["checks"] == {"database": "ok", "redis": "not_configured"}
+        assert ready.headers["cache-control"] == "no-store"
+        command.downgrade(Config(str(web.PROJECT_DIR / "alembic.ini")), "20261115_09")
+        assert client.get("/health/ready").json()["checks"]["database"] == "schema_mismatch"
+        assert client.get("/health/ready").status_code == 503
+    engine.dispose()
+
+
+def test_readiness_detects_a_missing_table_even_at_the_current_revision(tmp_path, monkeypatch):
+    database_url = f"sqlite:///{(tmp_path / 'health-incomplete.db').as_posix()}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    command.upgrade(Config(str(web.PROJECT_DIR / "alembic.ini")), "head")
+    engine = create_database(database_url)
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE datasets"))
+    monkeypatch.setattr(web, "engine", engine)
+    monkeypatch.setattr(web, "cache_client", None)
+    with TestClient(web.app) as client:
+        response = client.get("/health/ready")
+        assert response.status_code == 503
+        assert response.json()["checks"]["database"] == "schema_unavailable"
+        assert "datasets" not in response.text
     engine.dispose()
 
 

@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 from uuid import uuid4
 
 import httpx
+from alembic.script import ScriptDirectory
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
@@ -21,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from redis import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
@@ -47,6 +48,7 @@ from app.models import (
 from app.monitoring import monitoring_alerts, source_summaries
 from app.privacy import install_access_log_filter
 from app.rate_limit import RedisRateLimiter
+from app.readiness import database_readiness
 from app.search import (
     CatalogueFacets,
     catalogue_facets,
@@ -68,6 +70,9 @@ from app.storage import (
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
+EXPECTED_DATABASE_HEADS = frozenset(
+    ScriptDirectory(PROJECT_DIR / "migrations").get_heads()
+)
 install_access_log_filter()
 DEMO_API_KEY = "bharatos_demo_2026"
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -289,22 +294,18 @@ def liveness() -> dict:
 def readiness() -> JSONResponse:
     checks = {"database": "not_configured", "redis": "not_configured"}
     if engine is not None:
-        try:
-            with engine.connect() as connection:
-                connection.execute(text("SELECT 1"))
-            checks["database"] = "ok"
-        except Exception:
-            checks["database"] = "unavailable"
+        checks["database"] = database_readiness(engine, EXPECTED_DATABASE_HEADS)
     if cache_client is not None:
         try:
             cache_client.ping()
             checks["redis"] = "ok"
         except RedisError:
             checks["redis"] = "unavailable"
-    ready = all(value != "unavailable" for value in checks.values())
+    ready = all(value in {"ok", "not_configured"} for value in checks.values())
     return JSONResponse(
         status_code=200 if ready else 503,
         content={"status": "ready" if ready else "unavailable", "checks": checks},
+        headers={"Cache-Control": "no-store"},
     )
 
 
