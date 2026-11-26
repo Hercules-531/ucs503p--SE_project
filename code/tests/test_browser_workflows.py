@@ -85,6 +85,34 @@ def test_developer_registers_runs_playground_and_revokes_key(developer_portal):
             browser.close()
 
 
+def test_mobile_scheme_discovery_with_reduced_motion(developer_portal):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            page = browser.new_page(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
+            page.goto(developer_portal, wait_until="domcontentloaded")
+            hero = page.get_by_role("heading", name="Public schemes. One place to look.")
+            expect(hero).to_be_visible()
+            expect(hero).to_have_css("animation-name", "none")
+            assert page.evaluate("document.documentElement.scrollWidth === window.innerWidth")
+
+            menu = page.get_by_role("button", name="Menu")
+            navigation = page.get_by_role("navigation", name="Primary navigation")
+            menu.click()
+            expect(navigation.get_by_role("link", name="PIN lookup")).to_be_visible()
+            page.keyboard.press("Escape")
+            expect(menu).to_be_focused()
+            expect(menu).to_have_attribute("aria-expanded", "false")
+
+            page.get_by_role("textbox", name="Search schemes").fill("health")
+            page.get_by_role("button", name="Show matches").click()
+            assert page.url.endswith("#scheme-results")
+            expect(page.get_by_role("heading", name="Scheme catalogue")).to_be_in_viewport()
+            expect(page.get_by_role("link", name="Clear filters")).to_be_visible()
+        finally:
+            browser.close()
+
+
 def test_reference_authorizes_and_calls_api_without_external_assets(developer_portal):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()

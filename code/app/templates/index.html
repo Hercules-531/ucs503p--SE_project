@@ -3,19 +3,21 @@
 {% block content %}
 <section class="explore-shell">
   <div class="page-intro">
-    <div>
-      <p class="eyebrow">Unified discovery</p>
-      <h1>Find public schemes without searching dozens of portals.</h1>
-      <p class="lede">Filter a source-linked prototype catalogue. Results show potential relevance, not an official eligibility decision.</p>
+    <div class="intro-copy">
+      <h1>Public schemes.<br><span>One place to look.</span></h1>
+      <p class="lede">Explore Indian government schemes by state, category and audience. Check the official source before applying.</p>
+      <div class="intro-actions">
+        <a class="button hero-button" href="#scheme-filters">Explore schemes <span aria-hidden="true">↓</span></a>
+        <span>{{ catalogue_count }} source-linked records</span>
+      </div>
     </div>
-    <div class="coverage-card" aria-label="Prototype coverage">
-      <span class="coverage-number">{{ catalogue_count }}</span>
-      <span>source-linked records</span>
-      <small>Check each record's verification date</small>
-    </div>
+    <figure class="intro-photo">
+      <img src="{{ url_for('static', path='images/humayuns-tomb.webp').path }}" width="1120" height="1064" alt="The sandstone arches and marble dome of Humayun’s Tomb" fetchpriority="high">
+      <figcaption><a href="https://unsplash.com/@rahsaxena">Humayun’s Tomb, Delhi · Rahul Saxena</a></figcaption>
+    </figure>
   </div>
 
-  <form class="search-panel" method="get" action="/" aria-label="Scheme filters">
+  <form class="search-panel explore-filters" id="scheme-filters" method="get" action="/#scheme-results" aria-label="Scheme filters">
     <label class="search-field">
       <span>Search schemes</span>
       <input name="q" value="{{ filters.q }}" placeholder="Try health, farmer or housing" autocomplete="off">
@@ -41,10 +43,11 @@
         {% for item in audiences %}<option value="{{ item }}" {% if filters.audience == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
       </select>
     </label>
-    <button class="button primary" type="submit">Show matches</button>
+    <button class="button primary" type="submit">Show matches <span aria-hidden="true">→</span></button>
     <label class="include-unknown"><input type="checkbox" name="include_unknown" value="true" {% if filters.include_unknown %}checked{% endif %}><span>Include records with unspecified state or audience details</span></label>
   </form>
 
+  <section class="scheme-results" id="scheme-results" aria-labelledby="catalogue-title" tabindex="-1">
   {% if uncertain_exclusions %}
   <div class="advisory-box filter-notice" role="note">
     <strong>{{ uncertain_exclusions }} {% if filters.include_unknown %}included{% else %}additional{% endif %} record{% if uncertain_exclusions != 1 %}s have{% else %} has{% endif %} incomplete filter information.</strong>
@@ -53,7 +56,7 @@
   {% endif %}
 
   <div class="results-heading">
-    <div><p class="eyebrow">Catalogue</p><h2>{{ total_matches }} potential match{% if total_matches != 1 %}es{% endif %}</h2></div>
+    <div><h2 id="catalogue-title">Scheme catalogue</h2><p>{{ total_matches }} potential match{% if total_matches != 1 %}es{% endif %}</p></div>
     {% if filters.q or filters.category or filters.state or filters.audience %}<a class="text-link" href="/">Clear filters</a>{% endif %}
   </div>
 
@@ -81,9 +84,9 @@
   </div>
   {% if page_count > 1 %}
   <nav class="catalogue-pagination" aria-label="Scheme result pages">
-    {% if previous_page_url %}<a class="button secondary" href="{{ previous_page_url }}">Previous</a>{% endif %}
+    {% if previous_page_url %}<a class="button secondary" href="{{ previous_page_url }}#scheme-results">Previous</a>{% endif %}
     <span>Page {{ page }} of {{ page_count }}</span>
-    {% if next_page_url %}<a class="button secondary" href="{{ next_page_url }}">Next</a>{% endif %}
+    {% if next_page_url %}<a class="button secondary" href="{{ next_page_url }}#scheme-results">Next</a>{% endif %}
   </nav>
   {% endif %}
   {% else %}
@@ -93,5 +96,6 @@
     <a class="button secondary" href="/">Clear all filters</a>
   </div>
   {% endif %}
+  </section>
 </section>
 {% endblock %}

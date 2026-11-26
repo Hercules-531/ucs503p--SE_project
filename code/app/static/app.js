@@ -2,10 +2,20 @@ const menuButton = document.querySelector(".mobile-menu");
 const nav = document.querySelector("#main-nav");
 
 if (menuButton && nav) {
+  function setMenuOpen(open) {
+    menuButton.setAttribute("aria-expanded", String(open));
+    nav.classList.toggle("is-open", open);
+  }
+
   menuButton.addEventListener("click", () => {
-    const expanded = menuButton.getAttribute("aria-expanded") === "true";
-    menuButton.setAttribute("aria-expanded", String(!expanded));
-    nav.classList.toggle("is-open", !expanded);
+    setMenuOpen(menuButton.getAttribute("aria-expanded") !== "true");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && nav.classList.contains("is-open")) {
+      setMenuOpen(false);
+      menuButton.focus();
+    }
   });
 }
 
