@@ -11,35 +11,34 @@ from uuid import uuid4
 import httpx
 import pytest
 
+from scripts.database_backup import backup, restore_to_new_database
+
 ROOT = Path(__file__).resolve().parents[1]
 CA_PATH = "/data/caddy/pki/authorities/local/root.crt"
 
 
 @pytest.fixture
-def compose_project(tmp_path):
+def compose_project(tmp_path, monkeypatch):
     project = f"bharatos-test-{uuid4().hex[:12]}"
     web_password = token_hex(24)
     admin_token = token_hex(24)
-    environment = {
-        key: value for key, value in os.environ.items() if not key.startswith("COMPOSE_")
-    }
-    environment.update(
-        POSTGRES_PASSWORD=token_hex(24),
-        ADMIN_TOKEN=admin_token,
-        WEB_DATABASE_URL=f"postgresql+psycopg://bharatos_web:{web_password}@db:5432/bharatos",
-        WEB_HTTP_PORT="0",
-        TLS_PORT="0",
-    )
-    env_file = tmp_path / "test.env"
-    env_file.touch()
+    postgres_password = token_hex(24)
+    web_url = f"postgresql+psycopg://bharatos_web:{web_password}@db:5432"
+    for name in list(os.environ):
+        if name.startswith("COMPOSE_"):
+            monkeypatch.delenv(name)
+    monkeypatch.setenv("COMPOSE_DISABLE_ENV_FILE", "1")
+    monkeypatch.setenv("POSTGRES_PASSWORD", postgres_password)
+    monkeypatch.setenv("ADMIN_TOKEN", admin_token)
+    monkeypatch.setenv("WEB_DATABASE_URL", f"{web_url}/bharatos")
+    monkeypatch.setenv("WEB_HTTP_PORT", "0")
+    monkeypatch.setenv("TLS_PORT", "0")
 
     def compose(*args, input_text=None, check=True):
         process = subprocess.run(
             [
                 "docker",
                 "compose",
-                "--env-file",
-                str(env_file),
                 "-p",
                 project,
                 "--profile",
@@ -47,7 +46,6 @@ def compose_project(tmp_path):
                 *args,
             ],
             cwd=ROOT,
-            env=environment,
             input=input_text,
             capture_output=True,
             encoding="utf-8",
@@ -56,12 +54,12 @@ def compose_project(tmp_path):
         )
         if check and process.returncode:
             output = process.stderr + process.stdout
-            for secret in (web_password, admin_token, environment["POSTGRES_PASSWORD"]):
+            for secret in (web_password, admin_token, postgres_password):
                 output = output.replace(secret, "[redacted]")
             pytest.fail(f"Docker Compose {' '.join(args)} failed:\n{output}", pytrace=False)
         return process
 
-    def sql(statement):
+    def sql(statement, *, database="bharatos"):
         return compose(
             "exec",
             "-T",
@@ -73,15 +71,22 @@ def compose_project(tmp_path):
             "-U",
             "bharatos",
             "-d",
-            "bharatos",
+            database,
             input_text=statement,
         ).stdout.strip()
+
+    grants = (ROOT / "deploy/web_database_grants.sql").read_text(encoding="utf-8")
+
+    def use_recovered_database(database):
+        sql(grants, database=database)
+        monkeypatch.setenv("WEB_DATABASE_URL", f"{web_url}/{database}")
+        compose("up", "--force-recreate", "--no-deps", "--wait", "--wait-timeout", "80", "web")
 
     try:
         compose("up", "--build", "--detach", "setup")
         compose("wait", "setup")
         sql(f"CREATE ROLE bharatos_web LOGIN PASSWORD '{web_password}';")
-        sql((ROOT / "deploy/web_database_grants.sql").read_text(encoding="utf-8"))
+        sql(grants)
         compose("run", "--rm", "--no-deps", "setup", "python", "-m", "scripts.ingest_snapshots")
         compose("up", "--build", "--wait", "--wait-timeout", "80", "proxy")
 
@@ -99,15 +104,15 @@ def compose_project(tmp_path):
         with httpx.Client(
             base_url=f"https://localhost:{port}", verify=tls, trust_env=False
         ) as client:
-            yield client, admin_token, sql
+            yield client, admin_token, sql, project, use_recovered_database
     finally:
         # The random project name scopes deletion to this test's containers and volumes.
         compose("down", "--volumes", "--rmi", "local", "--remove-orphans")
 
 
 @pytest.mark.skipif(os.getenv("RUN_COMPOSE_TESTS") != "1", reason="Requires local Docker Compose")
-def test_compose_https_with_restricted_database_role(compose_project):
-    client, admin_token, sql = compose_project
+def test_compose_https_with_restricted_database_role(compose_project, tmp_path):
+    client, admin_token, sql, project, use_recovered_database = compose_project
     ready = client.get("/health/ready")
     assert ready.status_code == 200
     assert ready.json() == {"status": "ready", "checks": {"database": "ok", "redis": "ok"}}
@@ -153,3 +158,45 @@ def test_compose_https_with_restricted_database_role(compose_project):
     key_id = issued.json()["id"]
     assert client.delete(f"/api/v1/developers/keys/{key_id}", headers=session).status_code == 200
     assert client.get("/api/v1/schemes", headers=key).status_code == 401
+
+    active_key = client.post("/api/v1/developers/keys", headers=session)
+    assert active_key.status_code == 201
+    archive = tmp_path / "recovery.dump"
+    backup(archive, project)
+
+    truncated = tmp_path / "truncated.dump"
+    contents = archive.read_bytes()
+    truncated.write_bytes(contents[: len(contents) // 2])
+    with pytest.raises(subprocess.CalledProcessError):
+        restore_to_new_database(truncated, "bharatos_restore_invalid", project)
+    assert (
+        sql("SELECT count(*) FROM pg_database WHERE datname = 'bharatos_restore_invalid';") == "0"
+    )
+
+    restored = "bharatos_restore_check"
+    restore_to_new_database(archive, restored, project)
+    use_recovered_database(restored)
+    assert client.get("/health/ready").json() == ready.json()
+    assert (
+        sql(
+            "SELECT count(*) FROM pg_stat_activity WHERE datname = 'bharatos_restore_check' "
+            "AND usename = 'bharatos_web';"
+        )
+        != "0"
+    )
+    recovered_usage = client.get("/api/v1/developers/usage", headers=session)
+    assert recovered_usage.status_code == 200
+    assert recovered_usage.json()["total_requests"] == 2
+    assert client.get("/api/v1/schemes", headers=key).status_code == 401
+    recovered_catalogue = client.get(
+        "/api/v1/schemes", headers={"X-API-Key": active_key.json()["key"]}
+    )
+    assert recovered_catalogue.status_code == 200
+    assert recovered_catalogue.json()["data"] == catalogue.json()["data"]
+    assert sql("SELECT count(*) FROM api_request_logs;") == "2"
+    assert sql("SELECT count(*) FROM api_request_logs;", database=restored) == "3"
+
+    next_archive = tmp_path / "post-recovery.dump"
+    backup(next_archive, project, database=restored)
+    restore_to_new_database(next_archive, "bharatos_restore_recheck", project)
+    assert sql("SELECT count(*) FROM api_request_logs;", database="bharatos_restore_recheck") == "3"

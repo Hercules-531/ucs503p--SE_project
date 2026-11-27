@@ -81,5 +81,8 @@ uv run pytest -q tests/test_compose_deployment.py
 
 The test creates a fresh Compose project, applies migrations and grants, and runs the developer
 API flow over localhost HTTPS. It verifies the proxy certificate with the test project's CA,
-checks Redis cache hits and tests the database privileges of the web login. The containers,
-volumes and locally built images for this test project are removed when the test ends.
+checks Redis cache hits and tests the database privileges of the web login. The test rejects a
+truncated backup before creating a database, restores the valid backup, reapplies the web grants,
+and reconnects the web service. It checks that recovered records, active and revoked API keys,
+and usage logs still work over HTTPS. The test removes its containers, volumes and locally built
+images when it ends.

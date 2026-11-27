@@ -108,19 +108,23 @@ PostgreSQL custom-format backup at a new path:
 .venv\Scripts\python.exe -m scripts.database_backup backup C:\Backups\bharatos-2026-11-08.dump
 ```
 
-The destination directory must already exist; the command refuses to overwrite a file. Backups
-contain developer account information and password/key hashes, so protect and store them securely.
-Test recovery into a **new** database with a name beginning `bharatos_restore_`:
+Use an existing destination directory on a filesystem that supports hard links, such as NTFS.
+The command publishes the archive after `pg_dump` succeeds and refuses to overwrite a file.
+Protect backups because they contain account data and password and key hashes. Test your own
+trusted backup by restoring to a new database with a name beginning `bharatos_restore_`.
 
 ```powershell
 .venv\Scripts\python.exe -m scripts.database_backup restore C:\Backups\bharatos-2026-11-08.dump --target bharatos_restore_test
 ```
 
-The command refuses an existing target and never drops a database. If recovery fails after the
-new database was created, it may leave an incomplete database for an operator to inspect. A
-successful restore does not switch the running application to the recovered database; verify the
-data and arrange a separate cutover. Both commands accept `--project NAME` before the action for
-a non-default Compose project. Back up on a defined schedule and perform periodic restore drills.
+The restore command checks that PostgreSQL can read the archive before creating the target.
+It refuses an existing target. If recovery fails after creation, the new database is available
+for inspection. To use a recovered database, apply the web grants there, update
+`WEB_DATABASE_URL`, recreate the web service and check `/health/ready`. Keep the original
+connection string for rollback. After switching to a recovered database, pass
+`--database bharatos_restore_NAME` on subsequent backups so they capture the active database.
+Both commands accept `--project NAME` before the action. Schedule backups and repeat the
+recovery drill periodically.
 
 To enable the read-only `/admin` monitoring page, set a separate random `ADMIN_TOKEN` of at
 least 32 characters in `.env` (or in the server environment) and restart. The page shows stored

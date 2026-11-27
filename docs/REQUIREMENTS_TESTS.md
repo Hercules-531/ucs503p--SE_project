@@ -50,7 +50,10 @@ the four SRS groups. The names below are pytest node IDs relative to the applica
 The application workflow installs headless Chromium and runs the browser and PostgreSQL/Redis
 tests alongside the default suite. It also runs
 `tests/test_compose_deployment.py::test_compose_https_with_restricted_database_role` against the
-localhost HTTPS profile. Locally, to enable the browser test:
+localhost HTTPS profile. That test recovers a PostgreSQL backup, confirms keys and logs through
+the restored application, and verifies that a subsequent backup includes post-recovery writes.
+`tests/test_database_backup.py` covers failed dumps, destination races and restore preflight.
+To enable the browser tests locally:
 
 ```powershell
 uv sync --frozen
