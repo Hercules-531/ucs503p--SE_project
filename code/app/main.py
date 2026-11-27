@@ -865,6 +865,62 @@ def scheme_detail(request: Request, slug: str) -> HTMLResponse:
     )
 
 
+@app.get("/compare", response_class=HTMLResponse, include_in_schema=False)
+def compare_schemes(request: Request) -> HTMLResponse:
+    catalogue = sorted(current_schemes(), key=lambda scheme: scheme.name.casefold())
+    by_slug = {scheme.slug: scheme for scheme in catalogue}
+    requested = request.query_params.getlist("scheme")
+    selected = requested[:2]
+    invalid = (
+        len(requested) > 2
+        or len(set(selected)) != len(selected)
+        or any(slug not in by_slug for slug in selected)
+    )
+    comparison = [by_slug[slug] for slug in selected] if len(selected) == 2 and not invalid else []
+    return templates.TemplateResponse(
+        request=request,
+        name="compare.html",
+        context={
+            **common_context("explore"),
+            "catalogue": catalogue,
+            "selected": selected,
+            "comparison": comparison,
+            "invalid": invalid,
+        },
+        status_code=422 if invalid else 200,
+    )
+
+
+@app.get("/demo", response_class=HTMLResponse, include_in_schema=False)
+def demo_page(request: Request) -> HTMLResponse:
+    catalogue = current_schemes()
+    by_slug = {scheme.slug: scheme for scheme in catalogue}
+    examples = [
+        by_slug[slug]
+        for slug in ("ayushman-bharat-pm-jay", "janani-suraksha-yojana")
+        if slug in by_slug
+    ]
+    if len(examples) < 2:
+        examples = catalogue[:2]
+    compare_query = urlencode([("scheme", scheme.slug) for scheme in examples])
+    search_query = urlencode({"category": examples[0].category}) if examples else ""
+    api_query = urlencode({"endpoint": "scheme", "id": examples[0].id}) if examples else ""
+    location = current_location("147004") or current_location("515631")
+    return templates.TemplateResponse(
+        request=request,
+        name="demo.html",
+        context={
+            **common_context("demo"),
+            "compare_url": f"/compare?{compare_query}" if len(examples) == 2 else "/compare",
+            "search_url": (
+                f"/?{search_query}#scheme-results" if search_query else "/#scheme-filters"
+            ),
+            "developer_url": f"/developers?{api_query}" if api_query else "/developers",
+            "sample_pin": location.pincode if location else None,
+        },
+    )
+
+
 @app.get("/locations", response_class=HTMLResponse, include_in_schema=False)
 def public_location_search(request: Request, pincode: str = "") -> HTMLResponse:
     query = pincode.strip()

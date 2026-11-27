@@ -1,0 +1,42 @@
+.results-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.search-panel.comparison-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+}
+
+.comparison-form select { min-width: 0; }
+.comparison-result { margin-top: 24px; }
+.comparison-result table { min-width: 650px; }
+.comparison-result th { width: 22%; }
+.comparison-result thead th { width: auto; }
+.comparison-result thead th:not(:first-child) { width: 39%; }
+.comparison-result td { vertical-align: top; }
+.comparison-result thead a { font-size: 1rem; letter-spacing: normal; text-transform: none; }
+.comparison-result td a { display: inline-block; margin-top: 5px; }
+.comparison-result p { margin: 0; }
+.comparison-guidance { margin-top: 20px; }
+
+.demo-steps { margin: 0; padding-left: 36px; }
+.demo-steps li { padding: 15px 0 19px 8px; }
+.demo-steps li + li { border-top: 1px solid var(--line); }
+.demo-steps li::marker { color: var(--teal); font-weight: 750; }
+.demo-steps h2 { margin-bottom: 8px; font-size: 1.85rem; }
+.demo-steps p { max-width: 70ch; margin-bottom: 10px; color: var(--ink-soft); }
+
+@media (min-width: 721px) and (max-width: 900px) {
+  .main-nav { gap: 2px; }
+  .main-nav a { padding-inline: 8px; }
+}
+
+@media (max-width: 720px) {
+  .search-panel.comparison-form { grid-template-columns: minmax(0, 1fr); }
+  .results-actions { justify-content: flex-start; }
+  .scheme-results .results-heading { flex-wrap: wrap; }
+  .comparison-result { padding: 15px; }
+}

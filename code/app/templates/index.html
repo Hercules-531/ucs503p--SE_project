@@ -57,7 +57,10 @@
 
   <div class="results-heading">
     <div><h2 id="catalogue-title">Scheme catalogue</h2><p>{{ total_matches }} potential match{% if total_matches != 1 %}es{% endif %}</p></div>
-    {% if filters.q or filters.category or filters.state or filters.audience %}<a class="text-link" href="/">Clear filters</a>{% endif %}
+    <div class="results-actions">
+      {% if filters.q or filters.category or filters.state or filters.audience %}<a class="text-link" href="/">Clear filters</a>{% endif %}
+      <a class="button secondary" href="/compare">Compare schemes</a>
+    </div>
   </div>
 
   {% if schemes %}

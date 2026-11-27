@@ -7,6 +7,8 @@ SAFE_PATHS = frozenset(
     {
         "/",
         "/developers",
+        "/compare",
+        "/demo",
         "/locations",
         "/docs",
         "/reference",

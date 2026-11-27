@@ -211,13 +211,15 @@ The proposal initially suggested a Next.js/Node.js implementation. Phase 1 uses 
 
 ## Part 6: Five-minute lab demonstration
 
+Open the **Demo** tab at `/demo` for shortcuts that use the data loaded in your local instance.
+
 1. **0:00–0:40 — Problem and boundary:** state the fragmentation problem, hybrid citizen/developer goal and student-project disclaimer.
-2. **0:40–1:30 — Citizen flow:** search “health,” apply an audience filter, open a result and point out source/freshness and the non-eligibility warning.
-3. **1:30–2:30 — Developer flow:** in default mode use the demo key; in database mode sign in and create a personal key. Run the scheme list and, if the demonstration records were seeded, PIN `147004`; show the envelope.
+2. **0:40–1:30 — Citizen flow:** open the preset search and compare two schemes. Show their benefits, potential relevance and source dates. Use the PIN shortcut to show postcode records and provenance.
+3. **1:30–2:30 — Developer flow:** in in-memory mode use the demo key. In database mode sign in and create a personal key. Run the prefilled scheme request and show the response envelope.
 4. **2:30–3:05 — Error behaviour:** explain or demonstrate that a missing key returns a standard `401` error.
 5. **3:05–3:40 — Admin boundary:** if configured, load the dashboard with the administrator token; distinguish recorded import results and optional HEAD checks from a live guarantee of dataset availability.
 6. **3:40–4:45 — UML:** use the use case diagram for requirements, sequence for live requests and activity for ingestion; mention what class/component diagrams add.
-7. **4:45–5:00 — Roadmap:** identify the verified official PIN import, wider source coverage, production security and developer pilot as remaining work.
+7. **4:45–5:00 — Roadmap:** identify the current monthly PIN import, wider source coverage, production security and developer pilot as remaining work. The May 2019 archive supports historical PIN lookup.
 
 ## Part 7: Likely viva questions and answers
 

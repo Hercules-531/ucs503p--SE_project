@@ -7,6 +7,7 @@
   <title>{% block title %}BharatOS{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', path='styles.css').path }}">
   <script defer src="{{ url_for('static', path='app.js').path }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', path='demo.css').path }}">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -25,6 +26,7 @@
       <a href="/locations" {% if active_page == 'locations' %}aria-current="page"{% endif %}>PIN lookup</a>
       <a href="/developers" {% if active_page == 'developers' %}aria-current="page"{% endif %}>Developers</a>
       <a href="/docs" {% if active_page == 'docs' %}aria-current="page"{% endif %}>API docs</a>
+      <a href="/demo" {% if active_page == 'demo' %}aria-current="page"{% endif %}>Demo</a>
       <a href="/admin" {% if active_page == 'admin' %}aria-current="page"{% endif %}>Admin view</a>
     </nav>
   </header>

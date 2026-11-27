@@ -47,6 +47,8 @@ the four SRS groups. The names below are pytest node IDs relative to the applica
 
 ## Run the tests
 
+`tests/test_demo.py` verifies the demo shortcuts, two-scheme comparison, invalid selections and empty catalogue state.
+
 The application workflow installs headless Chromium and runs the browser and PostgreSQL/Redis
 tests alongside the default suite. It also runs
 `tests/test_compose_deployment.py::test_compose_https_with_restricted_database_role` against the

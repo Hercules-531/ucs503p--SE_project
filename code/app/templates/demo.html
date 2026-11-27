@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Live demo · BharatOS{% endblock %}
+{% block content %}
+<section class="content-shell">
+  <div class="section-header compact">
+    <div>
+      <h1>BharatOS live demo</h1>
+      <p class="lede">A five-minute walkthrough using the records and API available in this instance.</p>
+    </div>
+  </div>
+
+  <ol class="demo-steps work-panel">
+    <li>
+      <h2>Find and compare schemes</h2>
+      <p>Open a filtered catalogue and check a record’s source. Compare two schemes to explain how benefits and eligibility guidance differ.</p>
+      <div class="developer-actions">
+        <a class="button primary" href="{{ search_url }}">Open scheme search</a>
+        <a class="button secondary" href="{{ compare_url }}">Open scheme comparison</a>
+      </div>
+    </li>
+    <li>
+      <h2>Look up a PIN code</h2>
+      <p>{% if sample_pin %}Use PIN {{ sample_pin }} to show the loaded post offices and their source date.{% else %}Search the PIN directory to see which locations the current dataset covers.{% endif %}</p>
+      <a class="button secondary" href="/locations{% if sample_pin %}?pincode={{ sample_pin }}{% endif %}">Open PIN lookup</a>
+    </li>
+    <li>
+      <h2>Run a protected API request</h2>
+      {% if demo_key %}
+      <p>The playground includes a demo key. Run the prefilled request and point out <code>data</code> and <code>meta</code> in the response.</p>
+      {% else %}
+      <p>Register and sign in with a test account, create a key, then run the prefilled request. Point out <code>data</code> and <code>meta</code>. Revoke the key and repeat the request to show the <code>401</code> response.</p>
+      {% endif %}
+      <a class="button secondary" href="{{ developer_url }}">Open API playground</a>
+    </li>
+    <li>
+      <h2>Explain the system</h2>
+      <p>Use the diagrams to connect the request and ingestion flows to the admin view. Enter the configured administrator token to load monitoring when available.</p>
+      <div class="developer-actions">
+        <a class="button secondary" href="/diagrams/index.html">Open UML diagrams</a>
+        <a class="button secondary" href="/admin">Open admin view</a>
+      </div>
+    </li>
+  </ol>
+</section>
+{% endblock %}
