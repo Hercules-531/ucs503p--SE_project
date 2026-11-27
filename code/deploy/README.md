@@ -28,7 +28,8 @@ Get-Content -Raw deploy/web_database_grants.sql | docker compose exec -T db psql
 ```
 
 In the private `.env` file, set `WEB_DATABASE_URL` to
-`postgresql+psycopg://bharatos_web:YOUR_WEB_PASSWORD@db:5432/bharatos`, replacing the password.
+`postgresql+psycopg://bharatos_web:YOUR_WEB_PASSWORD@db:5432/${BHARATOS_DATABASE:-bharatos}`,
+replacing the password. Compose expands the database name when it reads `.env`.
 Recreate the web service so it reads the new connection string.
 
 ```powershell
@@ -69,6 +70,33 @@ revocation, sign-out and admin overview. Source check inserts and updates succee
 PostgreSQL rejected catalogue and migration writes, public schema creation and request-log
 deletion with insufficient-privilege errors.
 
+## Switch to a recovered database
+
+After restoring a trusted backup into an existing Compose PostgreSQL instance, stop the web
+service and any running workers before changing the active database.
+
+```powershell
+docker compose --profile ingestion --profile monitoring stop web scheduler source-monitor
+```
+
+In `.env`, set `BHARATOS_DATABASE` to the restored database name, for example `bharatos_restore_test`.
+This selects the database for migrations, the web service, the PIN scheduler and the source
+monitor. If `WEB_DATABASE_URL` is set, use the interpolated name shown above or update its final
+path to the same database. The web service checks the database name and Compose host at startup.
+
+```powershell
+docker compose up -d --build setup
+docker compose wait setup
+Get-Content -Raw deploy/web_database_grants.sql | docker compose exec -T db psql -X -U bharatos -d bharatos_restore_test
+docker compose up -d --wait web
+```
+
+Use the actual restored name in the grant command if using the restricted login. Check
+`/health/ready`, a scheme and an authenticated request before restarting the optional workers
+you use. Start the `proxy` service with the `tls` profile if you use localhost HTTPS. Pass the
+restored name to `scripts.database_backup backup --database NAME` for subsequent backups.
+Preserve writes made after cutover when planning a rollback to the original database.
+
 ## Repeat the deployment check
 
 With Docker running, use the same HTTPS deployment test as the repository workflow.
@@ -84,5 +112,6 @@ API flow over localhost HTTPS. It verifies the proxy certificate with the test p
 checks Redis cache hits and tests the database privileges of the web login. The test rejects a
 truncated backup before creating a database, restores the valid backup, reapplies the web grants,
 and reconnects the web service. It checks that recovered records, active and revoked API keys,
-and usage logs still work over HTTPS. The test removes its containers, volumes and locally built
-images when it ends.
+and usage logs still work over HTTPS. It verifies that the scheduler and source monitor write
+to the recovered database and that a stale web connection is rejected. The test removes its
+containers, volumes and locally built images when it ends.

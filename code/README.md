@@ -119,9 +119,9 @@ trusted backup by restoring to a new database with a name beginning `bharatos_re
 
 The restore command checks that PostgreSQL can read the archive before creating the target.
 It refuses an existing target. If recovery fails after creation, the new database is available
-for inspection. To use a recovered database, apply the web grants there, update
-`WEB_DATABASE_URL`, recreate the web service and check `/health/ready`. Keep the original
-connection string for rollback. After switching to a recovered database, pass
+for inspection. Follow the [Compose cutover procedure](deploy/README.md#switch-to-a-recovered-database)
+to reconnect the web service, migrations and optional workers to the recovered database.
+After switching to a recovered database, pass
 `--database bharatos_restore_NAME` on subsequent backups so they capture the active database.
 Both commands accept `--project NAME` before the action. Schedule backups and repeat the
 recovery drill periodically.

@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from redis import Redis
 from redis.exceptions import RedisError
 from sqlalchemy import func, select, update
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
@@ -85,6 +86,18 @@ EXPECTED_DATABASE_HEADS = frozenset(
 install_access_log_filter()
 DEMO_API_KEY = "bharatos_demo_2026"
 DATABASE_URL = os.getenv("DATABASE_URL")
+compose_database = os.getenv("BHARATOS_DATABASE")
+if compose_database:
+    target = make_url(DATABASE_URL) if DATABASE_URL else None
+    if (
+        target is None
+        or target.get_backend_name() != "postgresql"
+        or (target.host, target.port or 5432, target.database) != ("db", 5432, compose_database)
+        or target.query.keys() & {"host", "hostaddr", "port", "dbname", "service"}
+    ):
+        raise RuntimeError(
+            "The web connection must match BHARATOS_DATABASE on the Compose db service"
+        )
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 engine = create_database(DATABASE_URL) if DATABASE_URL else None
 CACHE_NAMESPACE = hashlib.sha256((DATABASE_URL or "").encode()).hexdigest()[:16]

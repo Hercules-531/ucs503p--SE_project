@@ -1,5 +1,6 @@
 """Verify the localhost HTTPS profile with Docker and a disposable database."""
 
+import hashlib
 import os
 import ssl
 import subprocess
@@ -30,6 +31,7 @@ def compose_project(tmp_path, monkeypatch):
     monkeypatch.setenv("COMPOSE_DISABLE_ENV_FILE", "1")
     monkeypatch.setenv("POSTGRES_PASSWORD", postgres_password)
     monkeypatch.setenv("ADMIN_TOKEN", admin_token)
+    monkeypatch.delenv("BHARATOS_DATABASE", raising=False)
     monkeypatch.setenv("WEB_DATABASE_URL", f"{web_url}/bharatos")
     monkeypatch.setenv("WEB_HTTP_PORT", "0")
     monkeypatch.setenv("TLS_PORT", "0")
@@ -79,8 +81,14 @@ def compose_project(tmp_path, monkeypatch):
 
     def use_recovered_database(database):
         sql(grants, database=database)
+        monkeypatch.setenv("BHARATOS_DATABASE", database)
+        stale_connection = compose(
+            "run", "--rm", "--no-deps", "web", "python", "-c", "import app.main", check=False
+        )
+        assert stale_connection.returncode != 0
+        assert "The web connection must match BHARATOS_DATABASE" in stale_connection.stderr
         monkeypatch.setenv("WEB_DATABASE_URL", f"{web_url}/{database}")
-        compose("up", "--force-recreate", "--no-deps", "--wait", "--wait-timeout", "80", "web")
+        compose("up", "--wait", "--wait-timeout", "80", "web")
 
     try:
         compose("up", "--build", "--detach", "setup")
@@ -104,15 +112,25 @@ def compose_project(tmp_path, monkeypatch):
         with httpx.Client(
             base_url=f"https://localhost:{port}", verify=tls, trust_env=False
         ) as client:
-            yield client, admin_token, sql, project, use_recovered_database
+            yield client, admin_token, sql, project, use_recovered_database, compose
     finally:
         # The random project name scopes deletion to this test's containers and volumes.
-        compose("down", "--volumes", "--rmi", "local", "--remove-orphans")
+        compose(
+            "--profile",
+            "ingestion",
+            "--profile",
+            "monitoring",
+            "down",
+            "--volumes",
+            "--rmi",
+            "local",
+            "--remove-orphans",
+        )
 
 
 @pytest.mark.skipif(os.getenv("RUN_COMPOSE_TESTS") != "1", reason="Requires local Docker Compose")
-def test_compose_https_with_restricted_database_role(compose_project, tmp_path):
-    client, admin_token, sql, project, use_recovered_database = compose_project
+def test_compose_https_with_restricted_database_role(compose_project, tmp_path, monkeypatch):
+    client, admin_token, sql, project, use_recovered_database, compose = compose_project
     ready = client.get("/health/ready")
     assert ready.status_code == 200
     assert ready.json() == {"status": "ready", "checks": {"database": "ok", "redis": "ok"}}
@@ -196,7 +214,66 @@ def test_compose_https_with_restricted_database_role(compose_project, tmp_path):
     assert sql("SELECT count(*) FROM api_request_logs;") == "2"
     assert sql("SELECT count(*) FROM api_request_logs;", database=restored) == "3"
 
+    snapshot = tmp_path / "recovery-pins.csv"
+    snapshot.write_bytes(
+        b"officename,pincode,district,statename\n"
+        b"Recovery Test Post Office,123456,Example District,Delhi\n"
+    )
+    monkeypatch.setenv("PIN_SNAPSHOT_PATH", str(snapshot))
+    digest = hashlib.sha256(snapshot.read_bytes()).hexdigest()
+    compose(
+        "--profile",
+        "ingestion",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "scheduler",
+        "python",
+        "-m",
+        "scripts.schedule_pincode",
+        "/snapshots/pincode.csv",
+        "--verified-on",
+        "2026-01-01",
+        "--sha256",
+        digest,
+        "--once",
+    )
+    pin = client.get("/locations", params={"pincode": "123456"})
+    assert pin.status_code == 200 and "Recovery Test Post Office" in pin.text
+    pin_record = "SELECT count(*) FROM normalized_records WHERE identifier = '123456';"
+    assert sql(pin_record) == "0"
+
+    # Use the actual monitoring service connection while keeping source probes off the network.
+    compose(
+        "--profile",
+        "monitoring",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "source-monitor",
+        "python",
+        "-c",
+        """
+import os
+import httpx
+from sqlalchemy.orm import Session
+from app.source_checks import run_source_checks
+from app.storage import create_database
+
+with Session(create_database(os.environ['DATABASE_URL'])) as session:
+    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200))) as client:
+        run_source_checks(session, client)
+""",
+    )
+    monitored = client.get("/api/v1/admin/overview", headers={"X-Admin-Token": admin_token})
+    checks = monitored.json()["source_checks"]
+    assert checks and all(check["status"] == "accessible" for check in checks)
+    assert sql("SELECT count(*) FROM source_probes;") == "0"
+
     next_archive = tmp_path / "post-recovery.dump"
     backup(next_archive, project, database=restored)
     restore_to_new_database(next_archive, "bharatos_restore_recheck", project)
     assert sql("SELECT count(*) FROM api_request_logs;", database="bharatos_restore_recheck") == "3"
+    assert sql(pin_record, database="bharatos_restore_recheck") == "1"

@@ -22,7 +22,7 @@ services:
   setup:
     build: .
     environment: &app_environment
-      DATABASE_URL: postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos
+      DATABASE_URL: &owner_database_url postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${BHARATOS_DATABASE:-bharatos}
       REDIS_URL: redis://redis:6379/0
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
     depends_on:
@@ -36,7 +36,8 @@ services:
     build: .
     environment:
       <<: *app_environment
-      DATABASE_URL: "${WEB_DATABASE_URL:-postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos}"
+      DATABASE_URL: "${WEB_DATABASE_URL:-postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${BHARATOS_DATABASE:-bharatos}}"
+      BHARATOS_DATABASE: ${BHARATOS_DATABASE:-}
     depends_on:
       setup:
         condition: service_completed_successfully
@@ -66,7 +67,7 @@ services:
     profiles: ["monitoring"]
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos
+      DATABASE_URL: *owner_database_url
     depends_on:
       setup:
         condition: service_completed_successfully
@@ -76,7 +77,7 @@ services:
     profiles: ["ingestion"]
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://bharatos:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/bharatos
+      DATABASE_URL: *owner_database_url
     depends_on:
       setup:
         condition: service_completed_successfully
